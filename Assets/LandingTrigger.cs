@@ -9,6 +9,7 @@ public class LandingTrigger : MonoBehaviour
         if (gm.state != GameManager.State.Walking) return;
         if (other.gameObject.name.Contains("Player"))
         {
+            Debug.Log("Player landed successfully!");
             gm.OnPlayerLandedSuccessfully();
         }
     }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -76,5 +77,6 @@ public class GameManager : MonoBehaviour
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
         Debug.Log("GAME OVER");
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

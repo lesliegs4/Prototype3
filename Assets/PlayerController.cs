@@ -94,6 +94,12 @@ public class PlayerController : MonoBehaviour
             if (other == null) continue;
             if (other.CompareTag("Ground")) continue;
 
+            if(other.CompareTag("Platform"))
+            {
+                Debug.Log("Player is in contact with a platform.");
+                return true;
+            }
+
             if (supportLayers.value != 0)
             {
                 int otherLayerBit = 1 << other.gameObject.layer;
