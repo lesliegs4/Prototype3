@@ -6,10 +6,11 @@ public class LandingTrigger : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        if (gm == null) return;
         if (gm.state != GameManager.State.Walking) return;
-        if (other.gameObject.name.Contains("Player"))
+
+        if (other.CompareTag("Player"))
         {
-            Debug.Log("Player landed successfully!");
             gm.OnPlayerLandedSuccessfully();
         }
     }

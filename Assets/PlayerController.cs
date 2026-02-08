@@ -12,17 +12,30 @@ public class PlayerController : MonoBehaviour
     public float supportCheckDistance = 0.15f;
     [Tooltip("Small grace time to avoid false 'fall' on seam/contact jitter.")]
     public float unsupportedGraceTime = 0.05f;
+    [Tooltip("Only count support if contact happens within this bottom band (world units) of the player's collider.")]
+    public float bottomSupportEpsilon = 0.03f;
 
     bool walking = false;
     Rigidbody2D rb;
     Collider2D col2d;
     float unsupportedTimer = 0f;
     readonly ContactPoint2D[] contactBuf = new ContactPoint2D[12];
-    readonly RaycastHit2D[] castBuf = new RaycastHit2D[8];
+    // Note: we intentionally avoid wide casts here to reduce "edge leeway" before falling.
 
     public void BeginWalk()
     {
         walking = true;
+    }
+
+    public void StopWalking()
+    {
+        walking = false;
+        if (rb != null)
+        {
+            Vector2 v = rb.linearVelocity;
+            v.x = 0f;
+            rb.linearVelocity = v;
+        }
     }
 
     void Update()
@@ -45,46 +58,42 @@ public class PlayerController : MonoBehaviour
     {
         if (rb == null || gm == null) return;
 
-        // Only drive horizontal movement; let physics handle gravity/falling.
+        if (gm.state == GameManager.State.GameOver || gm.state == GameManager.State.Win)
+            return;
+
+        Vector2 v = rb.linearVelocity;   // declare ONCE
+
         if (gm.state == GameManager.State.Walking && walking)
         {
-            bool supported = HasSupportBelow();
-            Vector2 v = rb.linearVelocity;
-
-            if (supported)
+            if (HasSupportBelow())
             {
                 v.x = walkSpeed;
                 rb.linearVelocity = v;
-                unsupportedTimer = 0f;
             }
             else
             {
-                // As soon as we lose support, stop horizontal motion so we drop straight down.
+                gm.GameOver();
+                walking = false;
+
                 v.x = 0f;
                 rb.linearVelocity = v;
-
-                unsupportedTimer += Time.fixedDeltaTime;
-                if (unsupportedTimer >= unsupportedGraceTime)
-                {
-                    gm.GameOver();
-                    walking = false;
-                    rb.angularVelocity = 0f;
-                }
+                rb.angularVelocity = 0f;
             }
         }
         else
         {
-            // Stop pushing horizontally when not walking (keep vertical velocity).
-            Vector2 v = rb.linearVelocity;
             v.x = 0f;
             rb.linearVelocity = v;
-            unsupportedTimer = 0f;
         }
     }
+
 
     bool HasSupportBelow()
     {
         if (col2d == null) return true; // fail-safe: don't instant-fail if collider missing
+
+        Bounds b = col2d.bounds;
+        float bottomBandY = b.min.y + Mathf.Max(0.0001f, bottomSupportEpsilon);
 
         // 1) Prefer true collision contact beneath us (no more "edge ray" leeway).
         int contactCount = col2d.GetContacts(contactBuf);
@@ -94,39 +103,27 @@ public class PlayerController : MonoBehaviour
             if (other == null) continue;
             if (other.CompareTag("Ground")) continue;
 
-            if(other.CompareTag("Platform"))
-            {
-                Debug.Log("Player is in contact with a platform.");
-                return true;
-            }
-
             if (supportLayers.value != 0)
             {
                 int otherLayerBit = 1 << other.gameObject.layer;
                 if ((supportLayers.value & otherLayerBit) == 0) continue;
             }
 
-            // If the normal points upward, the other collider is supporting us from below.
-            if (contactBuf[i].normal.y > 0.25f) return true;
+            // Only count support when it touches the *bottom band* of the player.
+            // This prevents "side overlap" near an edge from keeping us supported too long.
+            if (contactBuf[i].normal.y > 0.25f && contactBuf[i].point.y <= bottomBandY)
+            {
+                return true;
+            }
         }
 
-        // 2) If not currently in contact, do a short shape-cast down to catch near-contact frames.
-        ContactFilter2D filter = new ContactFilter2D
-        {
-            useTriggers = false,
-            useLayerMask = supportLayers.value != 0,
-            layerMask = supportLayers
-        };
-
+        // 2) If not currently in contact, raycast straight down from the CENTER only.
+        // This is intentionally strict so you fall as soon as you're no longer actually supported.
+        Vector2 origin = new Vector2(b.center.x, b.min.y + 0.001f);
         float distance = Mathf.Max(0.01f, supportCheckDistance);
-        int hitCount = col2d.Cast(Vector2.down, filter, castBuf, distance);
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider2D other = castBuf[i].collider;
-            if (other == null) continue;
-            if (other.CompareTag("Ground")) continue;
-            return true;
-        }
+
+        int mask = supportLayers.value != 0 ? supportLayers.value : Physics2D.DefaultRaycastLayers;
+        
 
         return false;
     }

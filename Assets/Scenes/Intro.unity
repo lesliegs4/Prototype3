@@ -458,6 +458,9 @@ MonoBehaviour:
   platformPrefab: {fileID: 4139079442559141985, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
   currentPlatform: {fileID: 3938960945101295721}
   nextPlatform: {fileID: 1257200185}
+  cam: {fileID: 2126489988}
+  panDuration: 0.5
+  cameraOffset: {x: 0, y: 0, z: -10}
   score: 0
   winScore: 10
 --- !u!4 &716781906
@@ -531,6 +534,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8688432441294193462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8847029536973567751, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: gm
       value: 
@@ -568,7 +575,7 @@ GameObject:
   - component: {fileID: 1904573608}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -592,6 +599,7 @@ MonoBehaviour:
     m_Bits: 0
   supportCheckDistance: 0.15
   unsupportedGraceTime: 0.12
+  bottomSupportEpsilon: 0.015
 --- !u!50 &1904573609
 Rigidbody2D:
   serializedVersion: 5
@@ -618,7 +626,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!58 &1904573610
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -653,8 +661,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Offset: {x: -0.010902586, y: -0.13893901}
+  m_Radius: 0.37174872
 --- !u!212 &1904573611
 SpriteRenderer:
   serializedVersion: 2

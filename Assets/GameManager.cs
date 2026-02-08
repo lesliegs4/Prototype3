@@ -1,9 +1,11 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
+
 
 public class GameManager : MonoBehaviour
 {
-    public enum State { Building, Rotating, Walking, GameOver, Win }
+    public enum State { Building, Rotating, Walking, Panning, GameOver, Win }
     public State state = State.Building;
 
     [Header("References")]
@@ -14,6 +16,12 @@ public class GameManager : MonoBehaviour
     public GameObject platformPrefab;
     public Transform currentPlatform;
     public Transform nextPlatform;
+
+    [Header("Camera")]
+    public Camera cam;
+    public float panDuration = 0.5f;
+    public Vector3 cameraOffset = new Vector3(0f, 0f, -10f); // keep z = -10
+
 
     [Header("Progress")]
     public int score = 0;
@@ -26,9 +34,36 @@ public class GameManager : MonoBehaviour
         // and assigned them in the Inspector.
     }
 
+    IEnumerator PanThenReset()
+    {
+        state = State.Panning;
+
+        // Target camera position centered on the NEW current platform
+        Vector3 startPos = cam.transform.position;
+
+        // You can center camera on platform center OR slightly ahead
+        Vector3 targetPos = new Vector3(currentPlatform.position.x, cam.transform.position.y, 0f) + cameraOffset;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / Mathf.Max(0.0001f, panDuration);
+            cam.transform.position = Vector3.Lerp(startPos, targetPos, t);
+            yield return null;
+        }
+
+        cam.transform.position = targetPos;
+
+        // Now set up next round
+        ResetForNextRound();
+    }
+
     public void OnPlayerLandedSuccessfully()
     {
+        if (state == State.GameOver || state == State.Win) return;
+
         score++;
+
         if (score >= winScore)
         {
             state = State.Win;
@@ -36,17 +71,24 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // Advance: make next become current, spawn a new next
+        // Stop the player from continuing to walk during transitions
+        player.StopWalking();
+
+        // Advance platforms: next becomes current, spawn a new next
         AdvancePlatforms();
-        ResetForNextRound();
+
+        // Pan camera, then reset player/plank for next round
+        StartCoroutine(PanThenReset());
     }
+
 
     void AdvancePlatforms()
     {
-        // Move current out / destroy
+        // Destroy old current platform
         if (currentPlatform != null)
             Destroy(currentPlatform.gameObject);
 
+        // Promote next -> current
         currentPlatform = nextPlatform;
 
         // Spawn new next platform ahead
@@ -59,24 +101,27 @@ public class GameManager : MonoBehaviour
         GameObject p = Instantiate(platformPrefab, newPos, Quaternion.identity);
         p.transform.localScale = new Vector3(width, 1f, 1f);
         nextPlatform = p.transform;
+
+        // Wire landing trigger gm reference
+        LandingTrigger lt = p.GetComponentInChildren<LandingTrigger>();
+        if (lt != null) lt.gm = this;
     }
+
 
     void ResetForNextRound()
     {
         state = State.Building;
 
-        // Move player onto current platform top-left-ish
         player.ResetToPlatform(currentPlatform);
-
-        // Reset plank at current platform edge
         plank.ResetAtPlatformEdge(currentPlatform);
     }
+
 
     public void GameOver()
     {
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
         Debug.Log("GAME OVER");
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        // SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
