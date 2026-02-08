@@ -2,7 +2,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-
+/// <summary>
+/// /
+/// </summary>
 public class GameManager : MonoBehaviour
 {
     public enum State { Building, Rotating, Walking, Panning, GameOver, Win }
