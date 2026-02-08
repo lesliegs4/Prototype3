@@ -5,22 +5,24 @@ public class PlayerController : MonoBehaviour
     public GameManager gm;
     public float walkSpeed = 3f;
 
-    [Header("Fall Detection")]
-    [Tooltip("Layers considered 'support' (plank + platforms). Do NOT include Ground.")]
-    public LayerMask supportLayers;
-    [Tooltip("How far below the player's collider to look for support.")]
-    public float supportCheckDistance = 0.15f;
-    [Tooltip("Small grace time to avoid false 'fall' on seam/contact jitter.")]
-    public float unsupportedGraceTime = 0.05f;
-    [Tooltip("Only count support if contact happens within this bottom band (world units) of the player's collider.")]
-    public float bottomSupportEpsilon = 0.03f;
+    private bool walking = false;
+    private Rigidbody2D rb;
+    private Collider2D col2d;
 
-    bool walking = false;
-    Rigidbody2D rb;
-    Collider2D col2d;
-    float unsupportedTimer = 0f;
-    readonly ContactPoint2D[] contactBuf = new ContactPoint2D[12];
-    // Note: we intentionally avoid wide casts here to reduce "edge leeway" before falling.
+    private RigidbodyConstraints2D prevConstraints;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        col2d = GetComponent<Collider2D>();
+
+        if (rb != null)
+        {
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+            rb.freezeRotation = true;
+        }
+    }
 
     public void BeginWalk()
     {
@@ -38,135 +40,100 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    void Update()
+    // Seats player on top surface WITHOUT changing X (prevents "jumpy" reposition)
+    public void SnapToPlatformTopOnly(Transform platform)
     {
-        // Movement is handled in FixedUpdate via Rigidbody2D for stable collisions.
+        if (platform == null || col2d == null || rb == null) return;
+
+        Collider2D platCol = platform.GetComponent<Collider2D>();
+        if (platCol == null) return;
+
+        Bounds pb = platCol.bounds;
+        Bounds mb = col2d.bounds;
+
+        float newY = pb.max.y + mb.extents.y + 0.01f;
+        transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
     }
 
-    void Awake()
+    public void FreezeInPlace()
     {
-        rb = GetComponent<Rigidbody2D>();
-        col2d = GetComponent<Collider2D>();
-        if (rb != null)
-        {
-            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            rb.interpolation = RigidbodyInterpolation2D.Interpolate;
-        }
+        walking = false;
+        if (rb == null) return;
+
+        prevConstraints = rb.constraints;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+
+        rb.constraints = RigidbodyConstraints2D.FreezePositionX |
+                         RigidbodyConstraints2D.FreezePositionY |
+                         RigidbodyConstraints2D.FreezeRotation;
+
+        rb.Sleep();
+    }
+
+    public void Unfreeze()
+    {
+        if (rb == null) return;
+
+        rb.constraints = (prevConstraints == 0) ? RigidbodyConstraints2D.FreezeRotation : prevConstraints;
+        rb.WakeUp();
     }
 
     void FixedUpdate()
     {
         if (rb == null || gm == null) return;
 
+        // If game over or win, don't apply movement forces
         if (gm.state == GameManager.State.GameOver || gm.state == GameManager.State.Win)
             return;
 
-        Vector2 v = rb.linearVelocity;   // declare ONCE
-
         if (gm.state == GameManager.State.Walking && walking)
         {
-            if (HasSupportBelow())
-            {
-                v.x = walkSpeed;
-                rb.linearVelocity = v;
-            }
-            else
-            {
-                gm.GameOver();
-                walking = false;
-
-                v.x = 0f;
-                rb.linearVelocity = v;
-                rb.angularVelocity = 0f;
-            }
+            Vector2 v = rb.linearVelocity;
+            v.x = walkSpeed;
+            rb.linearVelocity = v;
         }
         else
         {
+            // Not walking: don't push sideways
+            Vector2 v = rb.linearVelocity;
             v.x = 0f;
             rb.linearVelocity = v;
         }
     }
 
-
-    bool HasSupportBelow()
-    {
-        if (col2d == null) return true; // fail-safe: don't instant-fail if collider missing
-
-        Bounds b = col2d.bounds;
-        float bottomBandY = b.min.y + Mathf.Max(0.0001f, bottomSupportEpsilon);
-
-        // 1) Prefer true collision contact beneath us (no more "edge ray" leeway).
-        int contactCount = col2d.GetContacts(contactBuf);
-        for (int i = 0; i < contactCount; i++)
-        {
-            Collider2D other = contactBuf[i].collider;
-            if (other == null) continue;
-            if (other.CompareTag("Ground")) continue;
-
-            if (supportLayers.value != 0)
-            {
-                int otherLayerBit = 1 << other.gameObject.layer;
-                if ((supportLayers.value & otherLayerBit) == 0) continue;
-            }
-
-            // Only count support when it touches the *bottom band* of the player.
-            // This prevents "side overlap" near an edge from keeping us supported too long.
-            if (contactBuf[i].normal.y > 0.25f && contactBuf[i].point.y <= bottomBandY)
-            {
-                return true;
-            }
-        }
-
-        // 2) If not currently in contact, raycast straight down from the CENTER only.
-        // This is intentionally strict so you fall as soon as you're no longer actually supported.
-        Vector2 origin = new Vector2(b.center.x, b.min.y + 0.001f);
-        float distance = Mathf.Max(0.01f, supportCheckDistance);
-
-        int mask = supportLayers.value != 0 ? supportLayers.value : Physics2D.DefaultRaycastLayers;
-        
-
-        return false;
-    }
-
-    bool RayHitsNonGround(Vector2 start, float distance, int mask)
-    {
-        // If the first thing below is the Ground, we *do not* count that as support.
-        // This makes "gap" failures end quickly even if there's a big ground collider under everything.
-        RaycastHit2D hit = Physics2D.Raycast(start, Vector2.down, distance, mask);
-        if (hit.collider == null) return false;
-        if (hit.collider.CompareTag("Ground")) return false;
-        return true;
-    }
-
+    // Only used at game start / restart
     public void ResetToPlatform(Transform platform)
     {
+        if (platform == null || col2d == null || rb == null) return;
+
         walking = false;
-        unsupportedTimer = 0f;
 
-        float left = platform.position.x - (platform.localScale.x * 0.5f);
-        float top = platform.position.y + (platform.localScale.y * 0.5f);
+        Collider2D platCol = platform.GetComponent<Collider2D>();
+        if (platCol == null) return;
 
-        transform.position = new Vector3(left + 0.6f, top + 0.5f, 0f);
+        Bounds pb = platCol.bounds;
+        Bounds mb = col2d.bounds;
 
-        // zero velocity
-        if (rb == null) rb = GetComponent<Rigidbody2D>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector2.zero;
-            rb.angularVelocity = 0f;
-        }
-    }
+        float radiusX = mb.extents.x;
+        float radiusY = mb.extents.y;
 
-    void OnCollisionEnter2D(Collision2D col)
-    {
-        if (col.collider.CompareTag("Ground"))
-        {
-            gm.GameOver();
-        }
-    }
+        float margin = 0.25f;
+        float x = pb.min.x + radiusX + margin;
+        float y = pb.max.y + radiusY + 0.01f;
 
-    void OnTriggerEnter2D(Collider2D other)
-    {
-        // If you add a trigger zone on platforms, use this.
+        // Clamp so we never place beyond right edge on tiny platforms
+        float maxX = pb.max.x - radiusX - margin;
+        x = Mathf.Min(x, maxX);
+
+        transform.position = new Vector3(x, y, 0f);
+
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.Sleep();
     }
 }

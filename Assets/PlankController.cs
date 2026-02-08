@@ -4,37 +4,14 @@ using UnityEngine;
 public class PlankController : MonoBehaviour
 {
     public GameManager gm;
-    public Transform plankVisual; // the child "Plank"
+    public Transform plankVisual;     // child "Plank"
     public float growSpeed = 3.0f;
     public float rotateSpeed = 250f;
 
-    bool wasHolding = false;
-    BoxCollider2D plankCol;
+    private bool wasHolding = false;
+    private bool rotating = false;
 
-    void Update()
-    {
-        if (gm.state == GameManager.State.Building)
-        {
-            bool holding = Input.GetKey(KeyCode.Space);
-
-            if (holding)
-            {
-                // grow in Y
-                Vector3 s = plankVisual.localScale;
-                s.y += growSpeed * Time.deltaTime;
-                plankVisual.localScale = s;
-                UpdatePlankVisualPivot();
-            }
-
-            // detect release (was holding last frame, not holding now)
-            if (wasHolding && !holding)
-            {
-                StartCoroutine(RotateDown());
-            }
-
-            wasHolding = holding;
-        }
-    }
+    private BoxCollider2D plankCol;
 
     void Awake()
     {
@@ -45,76 +22,144 @@ public class PlankController : MonoBehaviour
         }
     }
 
-    IEnumerator RotateDown()
+    void Update()
     {
+        if (gm == null || plankVisual == null) return;
+        if (gm.state != GameManager.State.Building) return;
+
+        bool holding = Input.GetKey(KeyCode.Space);
+
+        if (holding)
+        {
+            // grow upward (local Y)
+            Vector3 s = plankVisual.localScale;
+            s.y += growSpeed * Time.deltaTime;
+            plankVisual.localScale = s;
+
+            UpdatePlankVisualPivot();
+        }
+
+        if (wasHolding && !holding && !rotating)
+        {
+            StartCoroutine(RotateDownAndResolve());
+        }
+
+        wasHolding = holding;
+    }
+
+    IEnumerator RotateDownAndResolve()
+    {
+        rotating = true;
         gm.state = GameManager.State.Rotating;
 
-        const float targetZ = -90f;
-        while (Mathf.Abs(Mathf.DeltaAngle(transform.eulerAngles.z, targetZ)) > 0.1f)
+        // rotate to horizontal
+        yield return RotateToZ(-90f);
+
+        // tip check using collider bounds (robust)
+        if (plankCol == null) plankCol = plankVisual.GetComponent<BoxCollider2D>();
+        float tipX = plankCol.bounds.max.x;
+
+        if (gm.IsPlankTipOnNextPlatform(tipX))
         {
-            float currentZ = transform.eulerAngles.z;
-            float nextZ = Mathf.MoveTowardsAngle(currentZ, targetZ, rotateSpeed * Time.deltaTime);
-            transform.rotation = Quaternion.Euler(0, 0, nextZ);
+            gm.state = GameManager.State.Walking;
+            gm.player.BeginWalk();   // assumes GameManager has player reference
+        }
+        else
+        {
+            gm.GameOver();
+
+            // Let player physics fall naturally (stop pushing sideways)
+            gm.player.StopWalking();
+
+            // Make plank fall away smoothly
+            Rigidbody2D prb = plankVisual.GetComponent<Rigidbody2D>();
+            if (prb == null) prb = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+
+            prb.bodyType = RigidbodyType2D.Dynamic;
+            prb.gravityScale = 2f;
+            prb.angularVelocity = -250f;
+
+            // optional: disable collider after a moment so it doesn't "hold" anything
+            yield return new WaitForSeconds(0.05f);
+            if (plankCol != null) plankCol.enabled = false;
+        }
+
+        rotating = false;
+    }
+
+    IEnumerator RotateToZ(float targetZ)
+    {
+        while (true)
+        {
+            float z = transform.eulerAngles.z;
+            float current = NormalizeAngle(z);
+            float next = Mathf.MoveTowardsAngle(current, targetZ, rotateSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.Euler(0, 0, next);
+
+            if (Mathf.Abs(Mathf.DeltaAngle(next, targetZ)) < 0.5f)
+                break;
 
             yield return null;
         }
 
-        // snap clean
-        transform.rotation = Quaternion.Euler(0, 0, -90f);
-
-        // Ensure the plank lands flush: left edge at platform right, top at platform top
-        if (gm != null && gm.currentPlatform != null)
-        {
-            AlignHorizontalToPlatformEdgeTop(gm.currentPlatform);
-        }
-
-        gm.state = GameManager.State.Walking;
-        gm.player.BeginWalk();
+        transform.rotation = Quaternion.Euler(0, 0, targetZ);
     }
 
-    public void ResetAtPlatformEdge(Transform platform)
+    float NormalizeAngle(float z)
     {
-        // Reset rotation
-        transform.rotation = Quaternion.identity;
-
-        // Reset plank length
-        plankVisual.localScale = new Vector3(plankVisual.localScale.x, 0.1f, 1f);
-        UpdatePlankVisualPivot();
-
-        // Place pivot at right edge of platform top
-        float platformRight = platform.position.x + (platform.localScale.x * 0.5f);
-        float platformTop = platform.position.y + (platform.localScale.y * 0.5f);
-
-        transform.position = new Vector3(platformRight, platformTop, 0f);
-
-        wasHolding = false;
+        if (z > 180f) z -= 360f;
+        return z;
     }
 
     void UpdatePlankVisualPivot()
     {
-        // Keep the "base" of the plank fixed at the parent origin so scaling only grows "up".
-        // Works even if the collider has an offset.
         if (plankCol == null) return;
 
         float bottomLocalY = plankCol.offset.y - (plankCol.size.y * 0.5f);
         float scaledBottomY = bottomLocalY * plankVisual.localScale.y;
+
         Vector3 lp = plankVisual.localPosition;
         lp.y = -scaledBottomY;
         plankVisual.localPosition = lp;
     }
 
-    void AlignHorizontalToPlatformEdgeTop(Transform platform)
+    // Place plank at platform RIGHT edge using platform collider bounds (better than localScale)
+    public void ResetAtPlatformEdge(Transform platform)
     {
-        if (plankCol == null) return;
+        if (gm == null || plankVisual == null || platform == null) return;
 
-        float platformRight = platform.position.x + (platform.localScale.x * 0.5f);
-        float platformTop = platform.position.y + (platform.localScale.y * 0.5f);
+        // remove fail rigidbody if any
+        Rigidbody2D prb = plankVisual.GetComponent<Rigidbody2D>();
+        if (prb != null) Destroy(prb);
 
-        // After rotation, align using world-space bounds so the ball rolls on the top face.
-        Bounds b = plankCol.bounds;
-        Vector3 p = transform.position;
-        p.x += (platformRight - b.min.x);
-        p.y += (platformTop - b.max.y);
-        transform.position = p;
+        transform.rotation = Quaternion.identity;
+
+        // reset length
+        plankVisual.localScale = new Vector3(plankVisual.localScale.x, 0.1f, 1f);
+        UpdatePlankVisualPivot();
+
+        Collider2D pc = platform.GetComponent<Collider2D>();
+        float platformRight = pc != null ? pc.bounds.max.x : platform.position.x + platform.localScale.x * 0.5f;
+        float platformTop   = pc != null ? pc.bounds.max.y : platform.position.y + platform.localScale.y * 0.5f;
+
+        transform.position = new Vector3(platformRight, platformTop, 0f);
+
+        if (plankCol != null) plankCol.enabled = true;
+
+        wasHolding = false;
+        rotating = false;
+    }
+
+    public void CleanupAfterSuccess()
+    {
+        // disable collider so it stops affecting the player
+        if (plankCol != null) plankCol.enabled = false;
+
+        // keep it visually small / hidden
+        plankVisual.localScale = new Vector3(plankVisual.localScale.x, 0.1f, 1f);
+        transform.rotation = Quaternion.identity;
+
+        wasHolding = false;
+        rotating = false;
     }
 }

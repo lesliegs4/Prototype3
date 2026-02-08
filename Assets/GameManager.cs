@@ -1,29 +1,27 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using System.Collections;
 
-/// <summary>
-/// /
-/// </summary>
 public class GameManager : MonoBehaviour
 {
     public enum State { Building, Rotating, Walking, Panning, GameOver, Win }
     public State state = State.Building;
 
     [Header("References")]
-    public PlankController plank;
     public PlayerController player;
 
     [Header("Platforms")]
     public GameObject platformPrefab;
-    public Transform currentPlatform;
-    public Transform nextPlatform;
+    public Transform currentPlatform;   // assign in Inspector
+    public Transform nextPlatform;      // assign in Inspector
+
+    [Header("Plank Prefab")]
+    public GameObject plankPivotPrefab; // assign prefab in Inspector
+    private PlankController activePlank;
 
     [Header("Camera")]
     public Camera cam;
     public float panDuration = 0.5f;
-    public Vector3 cameraOffset = new Vector3(0f, 0f, -10f); // keep z = -10
-
+    public Vector3 cameraOffset = new Vector3(0f, 0f, -10f);
 
     [Header("Progress")]
     public int score = 0;
@@ -31,19 +29,99 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // If you already placed 2 platforms manually, you can skip spawning here.
-        // For barebones: assume you placed two platform instances in scene
-        // and assigned them in the Inspector.
+        // Put player on starting platform once
+        player.ResetToPlatform(currentPlatform);
+
+        // Spawn the first plank at current platform edge
+        SpawnNewPlankAtCurrentPlatform();
+
+        // Make sure landing trigger on the initial next platform knows about us
+        WireLandingTrigger(nextPlatform);
+    }
+
+    void SpawnNewPlankAtCurrentPlatform()
+    {
+        GameObject go = Instantiate(plankPivotPrefab);
+        activePlank = go.GetComponent<PlankController>();
+        activePlank.gm = this;
+
+        activePlank.ResetAtPlatformEdge(currentPlatform);
+    }
+
+    void WireLandingTrigger(Transform platform)
+    {
+        if (platform == null) return;
+        LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
+        if (lt != null) lt.gm = this;
+    }
+
+    // Robust: uses collider bounds, not localScale
+    public bool IsPlankTipOnNextPlatform(float tipX)
+    {
+        if (nextPlatform == null) return false;
+
+        Collider2D c = nextPlatform.GetComponent<Collider2D>();
+        if (c == null) return false;
+
+        return tipX >= c.bounds.min.x && tipX <= c.bounds.max.x;
+    }
+
+    public void OnPlayerLandedSuccessfully()
+    {
+        if (state == State.GameOver || state == State.Win) return;
+
+        score++;
+        if (score >= winScore)
+        {
+            state = State.Win;
+            Debug.Log("YOU WIN!");
+            return;
+        }
+
+        // IMPORTANT:
+        // Seat player on TOP of the platform they landed on (nextPlatform),
+        // WITHOUT changing X (so it doesn't look jumpy), then freeze during camera pan.
+        player.SnapToPlatformTopOnly(nextPlatform);
+        player.FreezeInPlace();
+
+        // Clean up old plank quickly (disable collider/visual) so it doesn't push the ball
+        if (activePlank != null) activePlank.CleanupAfterSuccess();
+
+        // Advance platforms: next becomes current, spawn a new next
+        AdvancePlatforms();
+
+        // Pan camera to new current, then start next round
+        StartCoroutine(PanThenReset());
+    }
+
+    void AdvancePlatforms()
+    {
+        // Promote next -> current
+        currentPlatform = nextPlatform;
+
+        // Spawn new next ahead of current (keep 3 on screen by NOT destroying old platforms here)
+        float gap = Random.Range(2.0f, 5.0f);
+        float width = Random.Range(2.0f, 4.0f);
+
+        // Use collider bounds for accurate placement
+        Collider2D curCol = currentPlatform.GetComponent<Collider2D>();
+        float curRight = (curCol != null) ? curCol.bounds.max.x : currentPlatform.position.x + currentPlatform.localScale.x * 0.5f;
+        float curY = currentPlatform.position.y;
+
+        Vector3 newPos = new Vector3(curRight + gap + width * 0.5f, curY, 0f);
+
+        GameObject p = Instantiate(platformPrefab, newPos, Quaternion.identity);
+        p.transform.localScale = new Vector3(width, 1f, 1f);
+        nextPlatform = p.transform;
+
+        WireLandingTrigger(nextPlatform);
     }
 
     IEnumerator PanThenReset()
     {
         state = State.Panning;
 
-        // Target camera position centered on the NEW current platform
         Vector3 startPos = cam.transform.position;
-
-        // You can center camera on platform center OR slightly ahead
         Vector3 targetPos = new Vector3(currentPlatform.position.x, cam.transform.position.y, 0f) + cameraOffset;
 
         float t = 0f;
@@ -53,77 +131,28 @@ public class GameManager : MonoBehaviour
             cam.transform.position = Vector3.Lerp(startPos, targetPos, t);
             yield return null;
         }
-
         cam.transform.position = targetPos;
 
-        // Now set up next round
         ResetForNextRound();
     }
-
-    public void OnPlayerLandedSuccessfully()
-    {
-        if (state == State.GameOver || state == State.Win) return;
-
-        score++;
-
-        if (score >= winScore)
-        {
-            state = State.Win;
-            Debug.Log("YOU WIN!");
-            return;
-        }
-
-        // Stop the player from continuing to walk during transitions
-        player.StopWalking();
-
-        // Advance platforms: next becomes current, spawn a new next
-        AdvancePlatforms();
-
-        // Pan camera, then reset player/plank for next round
-        StartCoroutine(PanThenReset());
-    }
-
-
-    void AdvancePlatforms()
-    {
-        // Destroy old current platform
-        if (currentPlatform != null)
-            Destroy(currentPlatform.gameObject);
-
-        // Promote next -> current
-        currentPlatform = nextPlatform;
-
-        // Spawn new next platform ahead
-        float gap = Random.Range(2.0f, 5.0f);
-        float width = Random.Range(2.0f, 4.0f);
-
-        Vector3 newPos = currentPlatform.position;
-        newPos.x += gap + (currentPlatform.localScale.x * 0.5f) + (width * 0.5f);
-
-        GameObject p = Instantiate(platformPrefab, newPos, Quaternion.identity);
-        p.transform.localScale = new Vector3(width, 1f, 1f);
-        nextPlatform = p.transform;
-
-        // Wire landing trigger gm reference
-        LandingTrigger lt = p.GetComponentInChildren<LandingTrigger>();
-        if (lt != null) lt.gm = this;
-    }
-
 
     void ResetForNextRound()
     {
         state = State.Building;
 
-        player.ResetToPlatform(currentPlatform);
-        plank.ResetAtPlatformEdge(currentPlatform);
-    }
+        // Spawn a fresh plank for the new gap
+        if (activePlank != null) Destroy(activePlank.gameObject);
+        SpawnNewPlankAtCurrentPlatform();
 
+        // Let physics resume
+        player.Unfreeze();
+    }
 
     public void GameOver()
     {
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
         Debug.Log("GAME OVER");
-        // SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        // Don't reload here if you want to watch the fall.
     }
 }
