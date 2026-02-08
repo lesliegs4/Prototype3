@@ -52,38 +52,39 @@ public class PlankController : MonoBehaviour
         rotating = true;
         gm.state = GameManager.State.Rotating;
 
-        // rotate to horizontal
         yield return RotateToZ(-90f);
 
-        // tip check using collider bounds (robust)
-        if (plankCol == null) plankCol = plankVisual.GetComponent<BoxCollider2D>();
+        // Hard-set rotation to -90 to ensure it is perfectly flush
+        transform.rotation = Quaternion.Euler(0, 0, -90f);
+
         float tipX = plankCol.bounds.max.x;
 
         if (gm.IsPlankTipOnNextPlatform(tipX))
         {
             gm.state = GameManager.State.Walking;
-            gm.player.BeginWalk();   // assumes GameManager has player reference
+            gm.player.BeginWalk(); 
         }
         else
         {
+            // Fail Scenario:
             gm.GameOver();
+            gm.player.BeginWalk(); // Allow player to keep moving into the gap
 
-            // Let player physics fall naturally (stop pushing sideways)
-            gm.player.StopWalking();
+            // Anchor the pivot and let the visual fall via a Hinge
+            Rigidbody2D pivotRB = gameObject.AddComponent<Rigidbody2D>();
+            pivotRB.bodyType = RigidbodyType2D.Static;
 
-            // Make plank fall away smoothly
-            Rigidbody2D prb = plankVisual.GetComponent<Rigidbody2D>();
-            if (prb == null) prb = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+            Rigidbody2D visualRB = plankVisual.gameObject.GetComponent<Rigidbody2D>();
+            if (visualRB == null) visualRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+            
+            visualRB.bodyType = RigidbodyType2D.Dynamic;
+            visualRB.gravityScale = 3f;
 
-            prb.bodyType = RigidbodyType2D.Dynamic;
-            prb.gravityScale = 2f;
-            prb.angularVelocity = -250f;
-
-            // optional: disable collider after a moment so it doesn't "hold" anything
-            yield return new WaitForSeconds(0.05f);
-            if (plankCol != null) plankCol.enabled = false;
+            HingeJoint2D hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
+            hinge.connectedBody = pivotRB;
+            // Anchor point at the left edge of the plank visual
+            hinge.anchor = new Vector2(0, plankCol.offset.y - (plankCol.size.y * 0.5f)); 
         }
-
         rotating = false;
     }
 

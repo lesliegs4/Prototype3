@@ -41,11 +41,19 @@ public class GameManager : MonoBehaviour
 
     void SpawnNewPlankAtCurrentPlatform()
     {
-        GameObject go = Instantiate(plankPivotPrefab);
+        // Calculate exact edge position first
+        Collider2D pc = currentPlatform.GetComponent<Collider2D>();
+        float platformRight = pc != null ? pc.bounds.max.x : currentPlatform.position.x;
+        float platformTop = pc != null ? pc.bounds.max.y : currentPlatform.position.y;
+        Vector3 spawnPos = new Vector3(platformRight, platformTop, 0f);
+
+        // Instantiate directly at the edge to prevent the "center screen flash"
+        GameObject go = Instantiate(plankPivotPrefab, spawnPos, Quaternion.identity);
         activePlank = go.GetComponent<PlankController>();
         activePlank.gm = this;
-
-        activePlank.ResetAtPlatformEdge(currentPlatform);
+        
+        // Ensure it starts invisible/tiny
+        activePlank.plankVisual.localScale = new Vector3(activePlank.plankVisual.localScale.x, 0.1f, 1f);
     }
 
     void WireLandingTrigger(Transform platform)
