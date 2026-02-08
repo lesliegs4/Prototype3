@@ -53,39 +53,55 @@ public class PlankController : MonoBehaviour
         gm.state = GameManager.State.Rotating;
 
         yield return RotateToZ(-90f);
-
-        // Hard-set rotation to -90 to ensure it is perfectly flush
         transform.rotation = Quaternion.Euler(0, 0, -90f);
 
         float tipX = plankCol.bounds.max.x;
+        bool onPlatform = gm.IsPlankTipOnNextPlatform(tipX);
 
-        if (gm.IsPlankTipOnNextPlatform(tipX))
+        if (onPlatform)
         {
             gm.state = GameManager.State.Walking;
-            gm.player.BeginWalk(); 
+            gm.player.BeginWalk();
         }
         else
         {
-            // Fail Scenario:
-            gm.GameOver();
-            gm.player.BeginWalk(); // Allow player to keep moving into the gap
+            // Check if it's a "Long Fail" or "Short Fail"
+            Collider2D nextCol = gm.nextPlatform.GetComponent<Collider2D>();
+            bool overshot = tipX > nextCol.bounds.max.x;
 
-            // Anchor the pivot and let the visual fall via a Hinge
-            Rigidbody2D pivotRB = gameObject.AddComponent<Rigidbody2D>();
-            pivotRB.bodyType = RigidbodyType2D.Static;
-
-            Rigidbody2D visualRB = plankVisual.gameObject.GetComponent<Rigidbody2D>();
-            if (visualRB == null) visualRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
-            
-            visualRB.bodyType = RigidbodyType2D.Dynamic;
-            visualRB.gravityScale = 3f;
-
-            HingeJoint2D hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
-            hinge.connectedBody = pivotRB;
-            // Anchor point at the left edge of the plank visual
-            hinge.anchor = new Vector2(0, plankCol.offset.y - (plankCol.size.y * 0.5f)); 
+            if (overshot)
+            {
+                // Trigger the "Walking" state so the player moves toward the next platform
+                gm.state = GameManager.State.Walking;
+                gm.player.BeginWalk();
+                
+                // Tell the GameManager to pan and THEN kill the player
+                gm.StartCoroutine(gm.PanAndFail());
+            }
+            else
+            {
+                // Standard Short Fail: Hinge logic and immediate Game Over
+                gm.GameOver();
+                gm.player.BeginWalk();
+                SetupHingePhysics();
+            }
         }
         rotating = false;
+    }
+
+    // Helper to keep the main coroutine clean
+    void SetupHingePhysics()
+    {
+        Rigidbody2D pivotRB = gameObject.AddComponent<Rigidbody2D>();
+        pivotRB.bodyType = RigidbodyType2D.Static;
+
+        Rigidbody2D visualRB = plankVisual.gameObject.GetComponent<Rigidbody2D>() ?? plankVisual.gameObject.AddComponent<Rigidbody2D>();
+        visualRB.bodyType = RigidbodyType2D.Dynamic;
+        visualRB.gravityScale = 3f;
+
+        HingeJoint2D hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
+        hinge.connectedBody = pivotRB;
+        hinge.anchor = new Vector2(0, plankCol.offset.y - (plankCol.size.y * 0.5f));
     }
 
     IEnumerator RotateToZ(float targetZ)
@@ -153,14 +169,15 @@ public class PlankController : MonoBehaviour
 
     public void CleanupAfterSuccess()
     {
-        // disable collider so it stops affecting the player
+        // Fully disable the visual and the collider
+        if (plankVisual != null) plankVisual.gameObject.SetActive(false);
         if (plankCol != null) plankCol.enabled = false;
 
-        // keep it visually small / hidden
-        plankVisual.localScale = new Vector3(plankVisual.localScale.x, 0.1f, 1f);
-        transform.rotation = Quaternion.identity;
-
+        // Reset internal state
         wasHolding = false;
         rotating = false;
+        
+        // Optional: Destroy this specific pivot since a new one is spawned anyway
+        Destroy(gameObject, 0.1f); 
     }
 }

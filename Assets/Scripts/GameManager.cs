@@ -144,6 +144,26 @@ public class GameManager : MonoBehaviour
         ResetForNextRound();
     }
 
+    public IEnumerator PanAndFail()
+    {
+        // Wait for the player to reach the general area of the next platform
+        yield return new WaitForSeconds(0.5f);
+
+        Vector3 startPos = cam.transform.position;
+        Vector3 targetPos = new Vector3(nextPlatform.position.x, cam.transform.position.y, 0f) + cameraOffset;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / panDuration;
+            cam.transform.position = Vector3.Lerp(startPos, targetPos, t);
+            yield return null;
+        }
+
+        // Now that we've seen the overshoot, trigger the actual Game Over
+        GameOver();
+    }
+
     void ResetForNextRound()
     {
         state = State.Building;
