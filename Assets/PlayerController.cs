@@ -87,11 +87,12 @@ public class PlayerController : MonoBehaviour
     {
         if (rb == null || gm == null) return;
 
-        // If game over or win, don't apply movement forces
-        if (gm.state == GameManager.State.GameOver || gm.state == GameManager.State.Win)
+        // Remove the 'GameOver' check here so the player keeps walking during the fall
+        if (gm.state == GameManager.State.Win)
             return;
 
-        if (gm.state == GameManager.State.Walking && walking)
+        // Keep walking if the state is Walking OR if we just hit GameOver
+        if ((gm.state == GameManager.State.Walking || gm.state == GameManager.State.GameOver) && walking)
         {
             Vector2 v = rb.linearVelocity;
             v.x = walkSpeed;
@@ -99,7 +100,6 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Not walking: don't push sideways
             Vector2 v = rb.linearVelocity;
             v.x = 0f;
             rb.linearVelocity = v;
