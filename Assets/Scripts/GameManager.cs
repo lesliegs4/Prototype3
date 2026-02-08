@@ -27,6 +27,9 @@ public class GameManager : MonoBehaviour
     public int score = 0;
     public int winScore = 10;
 
+    [Header("UI")]
+    public UIManager uiManager;
+
     void Start()
     {
         // Put player on starting platform once
@@ -83,6 +86,9 @@ public class GameManager : MonoBehaviour
         {
             state = State.Win;
             Debug.Log("YOU WIN!");
+        
+            if (uiManager != null) uiManager.ShowWinScreen();
+        
             return;
         }
 
@@ -181,6 +187,17 @@ public class GameManager : MonoBehaviour
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
         Debug.Log("GAME OVER");
-        // Don't reload here if you want to watch the fall.
+        
+        if (uiManager != null)
+        {
+            StartCoroutine(ShowLoseScreenDelayed());
+        }
+    }
+
+    System.Collections.IEnumerator ShowLoseScreenDelayed()
+    {
+        // Wait 1.5 seconds so player can see what happened
+        yield return new WaitForSeconds(1.5f);
+        uiManager.ShowLoseScreen();
     }
 }
