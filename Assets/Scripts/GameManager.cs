@@ -82,6 +82,10 @@ public class GameManager : MonoBehaviour
         if (state == State.GameOver || state == State.Win) return;
 
         score++;
+
+        if (AudioManager.instance != null)
+            AudioManager.instance.PlaySuccess();
+
         if (score >= winScore)
         {
             state = State.Win;
@@ -187,6 +191,9 @@ public class GameManager : MonoBehaviour
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
         Debug.Log("GAME OVER");
+
+        if (AudioManager.instance != null)
+            AudioManager.instance.PlayFail();
         
         if (uiManager != null)
         {

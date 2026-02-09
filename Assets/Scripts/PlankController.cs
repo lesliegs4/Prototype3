@@ -31,12 +31,28 @@ public class PlankController : MonoBehaviour
 
         if (holding)
         {
-            // grow upward (local Y)
+            // ADD THIS:
+            if (!wasHolding)
+            {
+                // Just started holding - play draw sound
+                if (AudioManager.instance != null)
+                AudioManager.instance.PlayPlankGrow();
+            }
+        
             Vector3 s = plankVisual.localScale;
             s.y += growSpeed * Time.deltaTime;
             plankVisual.localScale = s;
-
             UpdatePlankVisualPivot();
+        }
+        else
+        {
+            // ADD THIS:
+            if (wasHolding)
+            {
+                // Just released - stop draw sound
+                if (AudioManager.instance != null)
+                AudioManager.instance.StopPlankGrow();
+            }
         }
 
         if (wasHolding && !holding && !rotating)
@@ -53,6 +69,10 @@ public class PlankController : MonoBehaviour
         gm.state = GameManager.State.Rotating;
 
         yield return RotateToZ(-90f);
+
+        if (AudioManager.instance != null)
+            AudioManager.instance.PlayPlankLand();
+            
         transform.rotation = Quaternion.Euler(0, 0, -90f);
 
         float tipX = plankCol.bounds.max.x;
