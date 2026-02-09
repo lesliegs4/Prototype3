@@ -4,14 +4,16 @@ using UnityEngine;
 public class PlankController : MonoBehaviour
 {
     public GameManager gm;
-    public Transform plankVisual;     // child "Plank"
+    public Transform plankVisual;
     public float growSpeed = 3.0f;
-    public float rotateSpeed = 250f;
+    public float rotateSpeed = 180f;
 
     private bool wasHolding = false;
-    private bool rotating = false;
+    private bool isRotating = false;
+    private bool hitNextPlatform = false;
 
     private BoxCollider2D plankCol;
+    private Rigidbody2D plankRB;
 
     void Awake()
     {
@@ -19,6 +21,17 @@ public class PlankController : MonoBehaviour
         {
             plankCol = plankVisual.GetComponent<BoxCollider2D>();
             if (plankCol == null) plankCol = plankVisual.GetComponentInChildren<BoxCollider2D>();
+            
+            // Add/get Rigidbody
+            plankRB = plankVisual.GetComponent<Rigidbody2D>();
+            if (plankRB == null)
+            {
+                plankRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+            }
+            
+            // Kinematic for controlled rotation
+            plankRB.bodyType = RigidbodyType2D.Kinematic;
+            plankRB.useFullKinematicContacts = true;
         }
     }
 
@@ -31,13 +44,8 @@ public class PlankController : MonoBehaviour
 
         if (holding)
         {
-            // ADD THIS:
-            if (!wasHolding)
-            {
-                // Just started holding - play draw sound
-                if (AudioManager.instance != null)
+            if (!wasHolding && AudioManager.instance != null)
                 AudioManager.instance.PlayPlankGrow();
-            }
         
             Vector3 s = plankVisual.localScale;
             s.y += growSpeed * Time.deltaTime;
@@ -46,119 +54,105 @@ public class PlankController : MonoBehaviour
         }
         else
         {
-            // ADD THIS:
-            if (wasHolding)
-            {
-                // Just released - stop draw sound
-                if (AudioManager.instance != null)
+            if (wasHolding && AudioManager.instance != null)
                 AudioManager.instance.StopPlankGrow();
-            }
         }
 
-        if (wasHolding && !holding && !rotating)
+        if (wasHolding && !holding && !isRotating)
         {
-            StartCoroutine(RotateDownAndResolve());
+            StartCoroutine(RotateAndCheck());
         }
 
         wasHolding = holding;
     }
 
-    IEnumerator RotateDownAndResolve()
+    IEnumerator RotateAndCheck()
     {
-        rotating = true;
+        isRotating = true;
+        hitNextPlatform = false;
         gm.state = GameManager.State.Rotating;
 
-        yield return RotateToZ(-90f);
+        Debug.Log("🔄 Starting rotation...");
+
+        // Smooth rotation
+        float currentAngle = 0f;
+        float targetAngle = -90f;
+        
+        while (currentAngle > targetAngle && !hitNextPlatform)
+        {
+            float delta = rotateSpeed * Time.deltaTime;
+            currentAngle = Mathf.Max(currentAngle - delta, targetAngle);
+            transform.rotation = Quaternion.Euler(0, 0, currentAngle);
+            
+            yield return null;
+        }
+
+        // Lock final rotation
+        transform.rotation = Quaternion.Euler(0, 0, -90f);
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlayPlankLand();
 
-        transform.rotation = Quaternion.Euler(0, 0, -90f);
+        // Small delay for physics
+        yield return new WaitForSeconds(0.1f);
 
-        // Get next platform
-        Transform nextPlatform = gm.GetNextPlatform();
-        if (nextPlatform == null)
+        Debug.Log($"Rotation complete. Hit platform: {hitNextPlatform}");
+
+        if (hitNextPlatform)
         {
-            Debug.LogError("No next platform!");
-            gm.GameOver();
-            rotating = false;
-            yield break;
-        }
-
-        float tipX = plankCol.bounds.max.x;
-        Collider2D nextCol = nextPlatform.GetComponent<Collider2D>();
-        
-        // Check if tip is on platform
-        bool onPlatform = tipX >= nextCol.bounds.min.x && tipX <= nextCol.bounds.max.x;
-
-        if (onPlatform)
-        {
-            // Success!
+            Debug.Log("✅ Plank bridged the gap!");
             gm.state = GameManager.State.Walking;
             gm.player.BeginWalk();
         }
         else
         {
-            // Check if overshot or too short
-            bool overshot = tipX > nextCol.bounds.max.x;
+            Debug.Log("❌ Plank didn't reach!");
+            gm.GameOver();
+            gm.player.BeginWalk();
+            SetupFallPhysics();
+        }
 
-            if (overshot)
+        isRotating = false;
+    }
+
+    // Detect collision with platforms
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (!isRotating) return;
+
+        Debug.Log($"💥 Plank collided with: {collision.gameObject.name} (Layer: {LayerMask.LayerToName(collision.gameObject.layer)})");
+
+        // Check if it's a platform
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Platform"))
+        {
+            Transform nextPlatform = gm.GetNextPlatform();
+            
+            if (collision.gameObject.transform == nextPlatform)
             {
-                // Walk off the end
-                gm.state = GameManager.State.Walking;
-                gm.player.BeginWalk();
-                yield return new WaitForSeconds(0.5f);
-                gm.GameOver();
+                Debug.Log("✅ Hit the NEXT platform!");
+                hitNextPlatform = true;
             }
             else
             {
-                // Too short - plank falls
-                gm.GameOver();
-                gm.player.BeginWalk();
-                SetupHingePhysics();
+                Debug.Log("⚠️ Hit a platform, but not the next one");
             }
         }
-
-        rotating = false;
     }
 
-    // Helper to keep the main coroutine clean
-    void SetupHingePhysics()
+    void SetupFallPhysics()
     {
-        Rigidbody2D pivotRB = gameObject.AddComponent<Rigidbody2D>();
+        Rigidbody2D pivotRB = gameObject.GetComponent<Rigidbody2D>();
+        if (pivotRB == null)
+            pivotRB = gameObject.AddComponent<Rigidbody2D>();
         pivotRB.bodyType = RigidbodyType2D.Static;
 
-        Rigidbody2D visualRB = plankVisual.gameObject.GetComponent<Rigidbody2D>() ?? plankVisual.gameObject.AddComponent<Rigidbody2D>();
-        visualRB.bodyType = RigidbodyType2D.Dynamic;
-        visualRB.gravityScale = 3f;
+        plankRB.bodyType = RigidbodyType2D.Dynamic;
+        plankRB.gravityScale = 3f;
 
         HingeJoint2D hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
         hinge.connectedBody = pivotRB;
         hinge.anchor = new Vector2(0, plankCol.offset.y - (plankCol.size.y * 0.5f));
-    }
-
-    IEnumerator RotateToZ(float targetZ)
-    {
-        while (true)
-        {
-            float z = transform.eulerAngles.z;
-            float current = NormalizeAngle(z);
-            float next = Mathf.MoveTowardsAngle(current, targetZ, rotateSpeed * Time.deltaTime);
-            transform.rotation = Quaternion.Euler(0, 0, next);
-
-            if (Mathf.Abs(Mathf.DeltaAngle(next, targetZ)) < 0.5f)
-                break;
-
-            yield return null;
-        }
-
-        transform.rotation = Quaternion.Euler(0, 0, targetZ);
-    }
-
-    float NormalizeAngle(float z)
-    {
-        if (z > 180f) z -= 360f;
-        return z;
+        hinge.enableCollision = false;
     }
 
     void UpdatePlankVisualPivot()
@@ -173,44 +167,14 @@ public class PlankController : MonoBehaviour
         plankVisual.localPosition = lp;
     }
 
-    // Place plank at platform RIGHT edge using platform collider bounds (better than localScale)
-    public void ResetAtPlatformEdge(Transform platform)
-    {
-        if (gm == null || plankVisual == null || platform == null) return;
-
-        // remove fail rigidbody if any
-        Rigidbody2D prb = plankVisual.GetComponent<Rigidbody2D>();
-        if (prb != null) Destroy(prb);
-
-        transform.rotation = Quaternion.identity;
-
-        // reset length
-        plankVisual.localScale = new Vector3(plankVisual.localScale.x, 0.1f, 1f);
-        UpdatePlankVisualPivot();
-
-        Collider2D pc = platform.GetComponent<Collider2D>();
-        float platformRight = pc != null ? pc.bounds.max.x : platform.position.x + platform.localScale.x * 0.5f;
-        float platformTop   = pc != null ? pc.bounds.max.y : platform.position.y + platform.localScale.y * 0.5f;
-
-        transform.position = new Vector3(platformRight, platformTop, 0f);
-
-        if (plankCol != null) plankCol.enabled = true;
-
-        wasHolding = false;
-        rotating = false;
-    }
-
     public void CleanupAfterSuccess()
     {
-        // Fully disable the visual and the collider
         if (plankVisual != null) plankVisual.gameObject.SetActive(false);
         if (plankCol != null) plankCol.enabled = false;
 
-        // Reset internal state
         wasHolding = false;
-        rotating = false;
+        isRotating = false;
         
-        // Optional: Destroy this specific pivot since a new one is spawned anyway
         Destroy(gameObject, 0.1f); 
     }
 }

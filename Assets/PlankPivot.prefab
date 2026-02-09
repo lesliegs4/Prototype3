@@ -60,9 +60,9 @@ GameObject:
   - component: {fileID: 3987470661083819419}
   - component: {fileID: 1770806667987040533}
   - component: {fileID: 5668495751381936929}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Plank
-  m_TagString: Untagged
+  m_TagString: Plank
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

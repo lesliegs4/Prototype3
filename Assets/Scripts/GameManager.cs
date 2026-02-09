@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public Camera cam;
 
     [Header("Level Platforms")]
-    public Transform[] allPlatforms; // Assign ALL platforms in order in Inspector
+    public Transform[] allPlatforms;
     private int currentPlatformIndex = 0;
 
     [Header("Plank")]
@@ -20,8 +20,8 @@ public class GameManager : MonoBehaviour
 
     [Header("Camera")]
     public float panDuration = 0.5f;
-    public float cameraOffsetX = 2f; // How far ahead to show
-    public float cameraY = 0f; // Fixed Y position
+    public float cameraOffsetX = 2f;
+    public float cameraY = 0f;
 
     [Header("Progress")]
     public int score = 0;
@@ -32,34 +32,42 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("=== GAME MANAGER START ===");
+        
         if (allPlatforms.Length == 0)
         {
-            Debug.LogError("No platforms assigned! Drag platforms into 'All Platforms' array.");
+            Debug.LogError("❌ NO PLATFORMS ASSIGNED!");
             return;
         }
 
-        // Start at first platform
+        Debug.Log("Found " + allPlatforms.Length + " platforms");
+
         player.ResetToPlatform(allPlatforms[0]);
-        
-        // Position camera to show first platform
         PositionCameraAtPlatform(0);
-        
-        // Spawn first plank
         SpawnPlankAtPlatform(0);
-        
-        // Wire all landing triggers
         WireAllLandingTriggers();
+        
+        Debug.Log("=== SETUP COMPLETE ===");
     }
 
     void WireAllLandingTriggers()
     {
-        foreach (Transform platform in allPlatforms)
+        Debug.Log("--- Wiring Landing Triggers ---");
+        
+        for (int i = 0; i < allPlatforms.Length; i++)
         {
+            Transform platform = allPlatforms[i];
             LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
+            
             if (lt != null)
             {
                 lt.gm = this;
-                lt.platformIndex = System.Array.IndexOf(allPlatforms, platform);
+                lt.platformIndex = i;
+                Debug.Log("✅ Platform " + i + " (" + platform.name + ") - Landing Trigger WIRED");
+            }
+            else
+            {
+                Debug.LogError("❌ Platform " + i + " (" + platform.name + ") - NO LandingTrigger found!");
             }
         }
     }
@@ -80,56 +88,49 @@ public class GameManager : MonoBehaviour
         activePlank = go.GetComponent<PlankController>();
         activePlank.gm = this;
         activePlank.plankVisual.localScale = new Vector3(activePlank.plankVisual.localScale.x, 0.1f, 1f);
-    }
-
-    public bool IsPlankTipOnPlatform(float tipX, int platformIndex)
-    {
-        if (platformIndex >= allPlatforms.Length) return false;
-
-        Transform platform = allPlatforms[platformIndex];
-        Collider2D c = platform.GetComponent<Collider2D>();
-        if (c == null) return false;
-
-        return tipX >= c.bounds.min.x && tipX <= c.bounds.max.x;
+        
+        Debug.Log("🪵 Plank spawned at platform " + platformIndex);
     }
 
     public void OnPlayerLandedOnPlatform(int platformIndex)
     {
         if (state == State.GameOver || state == State.Win) return;
 
-        Debug.Log("Player landed on platform " + platformIndex);
+        Debug.Log("🎯 Player landed on platform " + platformIndex);
 
         score++;
 
-        if (AudioManager.instance != null)
-            AudioManager.instance.PlaySuccess();
+        // REMOVED: No sound effect when landing on regular platforms
+        // Only visual feedback (score counter)
 
         // Check if this is the last platform (win condition)
         if (platformIndex >= allPlatforms.Length - 1)
         {
             state = State.Win;
-            Debug.Log("YOU WIN!");
+            Debug.Log("🏆 YOU WIN!");
+            
+            // Play win sound only when actually winning
+            if (AudioManager.instance != null)
+                AudioManager.instance.PlaySuccess();
+            
             if (uiManager != null) uiManager.ShowWinScreen();
             return;
         }
 
-        // Freeze player where they landed
         player.SnapToPlatformTopOnly(allPlatforms[platformIndex]);
         player.FreezeInPlace();
 
-        // Clean up old plank
         if (activePlank != null) activePlank.CleanupAfterSuccess();
 
-        // Update current platform index
         currentPlatformIndex = platformIndex;
 
-        // Pan camera to show next platform
         StartCoroutine(PanToNextPlatform());
     }
 
     IEnumerator PanToNextPlatform()
     {
         state = State.Panning;
+        Debug.Log("📷 Camera panning...");
 
         int nextIndex = currentPlatformIndex + 1;
         if (nextIndex >= allPlatforms.Length)
@@ -139,8 +140,6 @@ public class GameManager : MonoBehaviour
         }
 
         Vector3 startPos = cam.transform.position;
-        
-        // Target: Show area between current and next platform
         Transform nextPlatform = allPlatforms[nextIndex];
         float targetX = (allPlatforms[currentPlatformIndex].position.x + nextPlatform.position.x) / 2f + cameraOffsetX;
         Vector3 targetPos = new Vector3(targetX, cameraY, -10f);
@@ -154,13 +153,11 @@ public class GameManager : MonoBehaviour
         }
         cam.transform.position = targetPos;
 
-        // Spawn new plank at current platform
         SpawnPlankAtPlatform(currentPlatformIndex);
-
-        // Unfreeze player
         player.Unfreeze();
 
         state = State.Building;
+        Debug.Log("✅ Ready for next plank");
     }
 
     void PositionCameraAtPlatform(int platformIndex)
@@ -182,7 +179,7 @@ public class GameManager : MonoBehaviour
     {
         if (state == State.GameOver || state == State.Win) return;
         state = State.GameOver;
-        Debug.Log("GAME OVER");
+        Debug.Log("💀 GAME OVER");
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlayFail();
