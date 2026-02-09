@@ -8,20 +8,20 @@ public class GameManager : MonoBehaviour
 
     [Header("References")]
     public PlayerController player;
+    public Camera cam;
 
-    [Header("Platforms")]
-    public GameObject platformPrefab;
-    public Transform currentPlatform;   // assign in Inspector
-    public Transform nextPlatform;      // assign in Inspector
+    [Header("Level Platforms")]
+    public Transform[] allPlatforms; // Assign ALL platforms in order in Inspector
+    private int currentPlatformIndex = 0;
 
-    [Header("Plank Prefab")]
-    public GameObject plankPivotPrefab; // assign prefab in Inspector
+    [Header("Plank")]
+    public GameObject plankPivotPrefab;
     private PlankController activePlank;
 
     [Header("Camera")]
-    public Camera cam;
     public float panDuration = 0.5f;
-    public Vector3 cameraOffset = new Vector3(0f, 0f, -10f);
+    public float cameraOffsetX = 2f; // How far ahead to show
+    public float cameraY = 0f; // Fixed Y position
 
     [Header("Progress")]
     public int score = 0;
@@ -32,115 +32,118 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // Put player on starting platform once
-        player.ResetToPlatform(currentPlatform);
+        if (allPlatforms.Length == 0)
+        {
+            Debug.LogError("No platforms assigned! Drag platforms into 'All Platforms' array.");
+            return;
+        }
 
-        // Spawn the first plank at current platform edge
-        SpawnNewPlankAtCurrentPlatform();
-
-        // Make sure landing trigger on the initial next platform knows about us
-        WireLandingTrigger(nextPlatform);
+        // Start at first platform
+        player.ResetToPlatform(allPlatforms[0]);
+        
+        // Position camera to show first platform
+        PositionCameraAtPlatform(0);
+        
+        // Spawn first plank
+        SpawnPlankAtPlatform(0);
+        
+        // Wire all landing triggers
+        WireAllLandingTriggers();
     }
 
-    void SpawnNewPlankAtCurrentPlatform()
+    void WireAllLandingTriggers()
     {
-        // Calculate exact edge position first
-        Collider2D pc = currentPlatform.GetComponent<Collider2D>();
-        float platformRight = pc != null ? pc.bounds.max.x : currentPlatform.position.x;
-        float platformTop = pc != null ? pc.bounds.max.y : currentPlatform.position.y;
+        foreach (Transform platform in allPlatforms)
+        {
+            LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
+            if (lt != null)
+            {
+                lt.gm = this;
+                lt.platformIndex = System.Array.IndexOf(allPlatforms, platform);
+            }
+        }
+    }
+
+    void SpawnPlankAtPlatform(int platformIndex)
+    {
+        if (platformIndex >= allPlatforms.Length) return;
+
+        Transform platform = allPlatforms[platformIndex];
+        Collider2D pc = platform.GetComponent<Collider2D>();
+        
+        float platformRight = pc != null ? pc.bounds.max.x : platform.position.x;
+        float platformTop = pc != null ? pc.bounds.max.y : platform.position.y;
+        
         Vector3 spawnPos = new Vector3(platformRight, platformTop, 0f);
 
-        // Instantiate directly at the edge to prevent the "center screen flash"
         GameObject go = Instantiate(plankPivotPrefab, spawnPos, Quaternion.identity);
         activePlank = go.GetComponent<PlankController>();
         activePlank.gm = this;
-        
-        // Ensure it starts invisible/tiny
         activePlank.plankVisual.localScale = new Vector3(activePlank.plankVisual.localScale.x, 0.1f, 1f);
     }
 
-    void WireLandingTrigger(Transform platform)
+    public bool IsPlankTipOnPlatform(float tipX, int platformIndex)
     {
-        if (platform == null) return;
-        LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
-        if (lt != null) lt.gm = this;
-    }
+        if (platformIndex >= allPlatforms.Length) return false;
 
-    // Robust: uses collider bounds, not localScale
-    public bool IsPlankTipOnNextPlatform(float tipX)
-    {
-        if (nextPlatform == null) return false;
-
-        Collider2D c = nextPlatform.GetComponent<Collider2D>();
+        Transform platform = allPlatforms[platformIndex];
+        Collider2D c = platform.GetComponent<Collider2D>();
         if (c == null) return false;
 
         return tipX >= c.bounds.min.x && tipX <= c.bounds.max.x;
     }
 
-    public void OnPlayerLandedSuccessfully()
+    public void OnPlayerLandedOnPlatform(int platformIndex)
     {
         if (state == State.GameOver || state == State.Win) return;
+
+        Debug.Log("Player landed on platform " + platformIndex);
 
         score++;
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlaySuccess();
 
-        if (score >= winScore)
+        // Check if this is the last platform (win condition)
+        if (platformIndex >= allPlatforms.Length - 1)
         {
             state = State.Win;
             Debug.Log("YOU WIN!");
-        
             if (uiManager != null) uiManager.ShowWinScreen();
-        
             return;
         }
 
-        // IMPORTANT:
-        // Seat player on TOP of the platform they landed on (nextPlatform),
-        // WITHOUT changing X (so it doesn't look jumpy), then freeze during camera pan.
-        player.SnapToPlatformTopOnly(nextPlatform);
+        // Freeze player where they landed
+        player.SnapToPlatformTopOnly(allPlatforms[platformIndex]);
         player.FreezeInPlace();
 
-        // Clean up old plank quickly (disable collider/visual) so it doesn't push the ball
+        // Clean up old plank
         if (activePlank != null) activePlank.CleanupAfterSuccess();
 
-        // Advance platforms: next becomes current, spawn a new next
-        AdvancePlatforms();
+        // Update current platform index
+        currentPlatformIndex = platformIndex;
 
-        // Pan camera to new current, then start next round
-        StartCoroutine(PanThenReset());
+        // Pan camera to show next platform
+        StartCoroutine(PanToNextPlatform());
     }
 
-    void AdvancePlatforms()
-    {
-        // Promote next -> current
-        currentPlatform = nextPlatform;
-
-        // Spawn new next ahead of current (keep 3 on screen by NOT destroying old platforms here)
-        float gap = Random.Range(2.0f, 5.0f);
-        float width = Random.Range(2.0f, 4.0f);
-
-        // Use collider bounds for accurate placement
-        Collider2D curCol = currentPlatform.GetComponent<Collider2D>();
-        float curRight = (curCol != null) ? curCol.bounds.max.x : currentPlatform.position.x + currentPlatform.localScale.x * 0.5f;
-        float curY = currentPlatform.position.y;
-
-        Vector3 newPos = new Vector3(curRight + gap + width * 0.5f, curY, 0f);
-
-        GameObject p = Instantiate(platformPrefab, newPos, Quaternion.identity);
-        p.transform.localScale = new Vector3(width, 1f, 1f);
-        nextPlatform = p.transform;
-
-        WireLandingTrigger(nextPlatform);
-    }
-
-    IEnumerator PanThenReset()
+    IEnumerator PanToNextPlatform()
     {
         state = State.Panning;
 
+        int nextIndex = currentPlatformIndex + 1;
+        if (nextIndex >= allPlatforms.Length)
+        {
+            Debug.LogError("No next platform!");
+            yield break;
+        }
+
         Vector3 startPos = cam.transform.position;
-        Vector3 targetPos = new Vector3(currentPlatform.position.x, cam.transform.position.y, 0f) + cameraOffset;
+        
+        // Target: Show area between current and next platform
+        Transform nextPlatform = allPlatforms[nextIndex];
+        float targetX = (allPlatforms[currentPlatformIndex].position.x + nextPlatform.position.x) / 2f + cameraOffsetX;
+        Vector3 targetPos = new Vector3(targetX, cameraY, -10f);
 
         float t = 0f;
         while (t < 1f)
@@ -151,39 +154,28 @@ public class GameManager : MonoBehaviour
         }
         cam.transform.position = targetPos;
 
-        ResetForNextRound();
-    }
+        // Spawn new plank at current platform
+        SpawnPlankAtPlatform(currentPlatformIndex);
 
-    public IEnumerator PanAndFail()
-    {
-        // Wait for the player to reach the general area of the next platform
-        yield return new WaitForSeconds(0.5f);
-
-        Vector3 startPos = cam.transform.position;
-        Vector3 targetPos = new Vector3(nextPlatform.position.x, cam.transform.position.y, 0f) + cameraOffset;
-
-        float t = 0f;
-        while (t < 1f)
-        {
-            t += Time.deltaTime / panDuration;
-            cam.transform.position = Vector3.Lerp(startPos, targetPos, t);
-            yield return null;
-        }
-
-        // Now that we've seen the overshoot, trigger the actual Game Over
-        GameOver();
-    }
-
-    void ResetForNextRound()
-    {
-        state = State.Building;
-
-        // Spawn a fresh plank for the new gap
-        if (activePlank != null) Destroy(activePlank.gameObject);
-        SpawnNewPlankAtCurrentPlatform();
-
-        // Let physics resume
+        // Unfreeze player
         player.Unfreeze();
+
+        state = State.Building;
+    }
+
+    void PositionCameraAtPlatform(int platformIndex)
+    {
+        if (platformIndex >= allPlatforms.Length) return;
+        
+        float targetX = allPlatforms[platformIndex].position.x + cameraOffsetX;
+        cam.transform.position = new Vector3(targetX, cameraY, -10f);
+    }
+
+    public Transform GetNextPlatform()
+    {
+        int nextIndex = currentPlatformIndex + 1;
+        if (nextIndex >= allPlatforms.Length) return null;
+        return allPlatforms[nextIndex];
     }
 
     public void GameOver()
@@ -194,16 +186,15 @@ public class GameManager : MonoBehaviour
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlayFail();
-        
+
         if (uiManager != null)
         {
             StartCoroutine(ShowLoseScreenDelayed());
         }
     }
 
-    System.Collections.IEnumerator ShowLoseScreenDelayed()
+    IEnumerator ShowLoseScreenDelayed()
     {
-        // Wait 1.5 seconds so player can see what happened
         yield return new WaitForSeconds(1.5f);
         uiManager.ShowLoseScreen();
     }

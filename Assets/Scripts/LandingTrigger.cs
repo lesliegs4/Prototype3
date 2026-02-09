@@ -3,6 +3,7 @@ using UnityEngine;
 public class LandingTrigger : MonoBehaviour
 {
     public GameManager gm;
+    public int platformIndex; // Which platform in the sequence is this?
 
     void OnTriggerEnter2D(Collider2D other)
     {
@@ -11,7 +12,8 @@ public class LandingTrigger : MonoBehaviour
 
         if (other.CompareTag("Player"))
         {
-            gm.OnPlayerLandedSuccessfully();
+            Debug.Log("✅ Player landed on platform " + platformIndex);
+            gm.OnPlayerLandedOnPlatform(platformIndex);
         }
     }
 }

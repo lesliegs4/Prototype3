@@ -72,40 +72,53 @@ public class PlankController : MonoBehaviour
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlayPlankLand();
-            
+
         transform.rotation = Quaternion.Euler(0, 0, -90f);
 
+        // Get next platform
+        Transform nextPlatform = gm.GetNextPlatform();
+        if (nextPlatform == null)
+        {
+            Debug.LogError("No next platform!");
+            gm.GameOver();
+            rotating = false;
+            yield break;
+        }
+
         float tipX = plankCol.bounds.max.x;
-        bool onPlatform = gm.IsPlankTipOnNextPlatform(tipX);
+        Collider2D nextCol = nextPlatform.GetComponent<Collider2D>();
+        
+        // Check if tip is on platform
+        bool onPlatform = tipX >= nextCol.bounds.min.x && tipX <= nextCol.bounds.max.x;
 
         if (onPlatform)
         {
+            // Success!
             gm.state = GameManager.State.Walking;
             gm.player.BeginWalk();
         }
         else
         {
-            // Check if it's a "Long Fail" or "Short Fail"
-            Collider2D nextCol = gm.nextPlatform.GetComponent<Collider2D>();
+            // Check if overshot or too short
             bool overshot = tipX > nextCol.bounds.max.x;
 
             if (overshot)
             {
-                // Trigger the "Walking" state so the player moves toward the next platform
+                // Walk off the end
                 gm.state = GameManager.State.Walking;
                 gm.player.BeginWalk();
-                
-                // Tell the GameManager to pan and THEN kill the player
-                gm.StartCoroutine(gm.PanAndFail());
+                yield return new WaitForSeconds(0.5f);
+                gm.GameOver();
             }
             else
             {
-                // Standard Short Fail: Hinge logic and immediate Game Over
+                // Too short - plank falls
                 gm.GameOver();
                 gm.player.BeginWalk();
                 SetupHingePhysics();
             }
         }
+
         rotating = false;
     }
 
