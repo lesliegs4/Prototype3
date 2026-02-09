@@ -884,7 +884,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 2100000, guid: b0b5d697ad1b8a54fb65a64876471419, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -964,7 +964,7 @@ MonoBehaviour:
   state: 0
   player: {fileID: 1904573608}
   platformPrefab: {fileID: 4139079442559141985, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
-  currentPlatform: {fileID: 3938960945101295721}
+  currentPlatform: {fileID: 0}
   nextPlatform: {fileID: 1257200185}
   plankPivotPrefab: {fileID: 2234908991519363089, guid: 7f79ce33b21a14b1a8d6fd504647e59c, type: 3}
   cam: {fileID: 2126489988}
@@ -4179,16 +4179,19 @@ PrefabInstance:
       propertyPath: gm
       value: 
       objectReference: {fileID: 716781905}
+    - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
+      propertyPath: m_SpriteTilingProperty.oldSize.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
+      propertyPath: m_SpriteTilingProperty.oldSize.y
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
---- !u!4 &3938960945101295721 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 6345665637430016828, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
-  m_PrefabInstance: {fileID: 3938960945101295720}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
