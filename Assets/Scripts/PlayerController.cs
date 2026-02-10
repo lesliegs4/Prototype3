@@ -4,6 +4,14 @@ public class PlayerController : MonoBehaviour
 {
     public GameManager gm;
     public float walkSpeed = 3f;
+
+    [Header("Audio")]
+    [Tooltip("Looped run/footstep clip played while the player is walking and unfrozen.")]
+    public AudioClip runLoopClip;
+    [Tooltip("Optional: assign an AudioSource to use for the run loop. If empty, one will be added to the player.")]
+    public AudioSource runLoopSource;
+    [Range(0f, 1f)]
+    public float runLoopVolume = 1f;
     
     [Header("Fail Conditions")]
     [Tooltip("If true, triggers Game Over if the player is ungrounded for longer than the delay.")]
@@ -36,10 +44,14 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (anim == null || gm == null) return;
+        if (gm == null) return;
 
         bool shouldRun = !isFrozen && walking && gm.state == GameManager.State.Walking;
-        anim.SetBool("isRunning", shouldRun);
+
+        if (anim != null)
+            anim.SetBool("isRunning", shouldRun);
+
+        UpdateRunLoopAudio(shouldRun);
     }
 
 
@@ -73,6 +85,8 @@ public class PlayerController : MonoBehaviour
             if (groundLayer >= 0)
                 groundKillMask = 1 << groundLayer;
         }
+
+        EnsureRunLoopSource();
     }
 
     public void BeginWalk()
@@ -118,6 +132,7 @@ public class PlayerController : MonoBehaviour
         {
             anim.SetBool("isRunning", false);
         }
+        StopRunLoopAudio();
 
         if (rb == null) return;
 
@@ -146,6 +161,64 @@ public class PlayerController : MonoBehaviour
         {
             anim.SetBool("isRunning", walking && gm != null && gm.state == GameManager.State.Walking);
         }
+
+        // If we got unfrozen into a walking state, the Update loop will start the sound;
+        // but calling once here makes it feel instant.
+        if (gm != null)
+        {
+            bool shouldRun = walking && gm.state == GameManager.State.Walking;
+            UpdateRunLoopAudio(shouldRun);
+        }
+    }
+
+    void EnsureRunLoopSource()
+    {
+        if (runLoopSource == null)
+        {
+            runLoopSource = GetComponent<AudioSource>();
+            if (runLoopSource == null)
+                runLoopSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        runLoopSource.playOnAwake = false;
+        runLoopSource.loop = true;
+        runLoopSource.volume = runLoopVolume;
+        // 2D sound (no spatial falloff) is typical for this style of game.
+        runLoopSource.spatialBlend = 0f;
+    }
+
+    void UpdateRunLoopAudio(bool shouldRun)
+    {
+        if (runLoopClip == null) { StopRunLoopAudio(); return; }
+
+        EnsureRunLoopSource();
+
+        // Keep volume in sync with inspector changes.
+        runLoopSource.volume = runLoopVolume;
+
+        if (shouldRun)
+        {
+            if (runLoopSource.clip != runLoopClip)
+                runLoopSource.clip = runLoopClip;
+
+            if (!runLoopSource.isPlaying)
+                runLoopSource.Play();
+        }
+        else
+        {
+            StopRunLoopAudio();
+        }
+    }
+
+    void StopRunLoopAudio()
+    {
+        if (runLoopSource != null && runLoopSource.isPlaying)
+            runLoopSource.Stop();
+    }
+
+    void OnDisable()
+    {
+        StopRunLoopAudio();
     }
 
     void FixedUpdate()
