@@ -2,14 +2,13 @@ using UnityEngine;
 
 public class ForceLayerCollision : MonoBehaviour
 {
-    void Awake() // Changed from Start to Awake
+    void Awake()
     {
-        // Get layer numbers
         int plankLayer = LayerMask.NameToLayer("Plank");
         int platformLayer = LayerMask.NameToLayer("Platform");
+        int defaultLayer = LayerMask.NameToLayer("Default");
         
-        Debug.Log($"Plank layer number: {plankLayer}");
-        Debug.Log($"Platform layer number: {platformLayer}");
+        Debug.Log($"Plank layer: {plankLayer}, Platform layer: {platformLayer}, Default layer: {defaultLayer}");
         
         if (plankLayer == -1)
         {
@@ -23,19 +22,28 @@ public class ForceLayerCollision : MonoBehaviour
             return;
         }
         
-        // FORCE collision to be ENABLED
         Physics2D.IgnoreLayerCollision(plankLayer, platformLayer, false);
+        Physics2D.IgnoreLayerCollision(plankLayer, defaultLayer, false);
         
-        // Verify
-        bool isIgnored = Physics2D.GetIgnoreLayerCollision(plankLayer, platformLayer);
+        bool plankPlatformIgnored = Physics2D.GetIgnoreLayerCollision(plankLayer, platformLayer);
+        bool plankDefaultIgnored = Physics2D.GetIgnoreLayerCollision(plankLayer, defaultLayer);
         
-        if (isIgnored)
+        if (plankPlatformIgnored)
         {
-            Debug.LogError("❌ Collision still DISABLED after forcing!");
+            Debug.LogError("❌ Plank × Platform collision still DISABLED!");
         }
         else
         {
-            Debug.Log("✅✅✅ Plank × Platform collision is NOW ENABLED! ✅✅✅");
+            Debug.Log("✅ Plank × Platform collision is ENABLED!");
+        }
+        
+        if (plankDefaultIgnored)
+        {
+            Debug.LogError("❌ Plank × Default (Player) collision still DISABLED!");
+        }
+        else
+        {
+            Debug.Log("✅ Plank × Default (Player) collision is ENABLED!");
         }
     }
 }

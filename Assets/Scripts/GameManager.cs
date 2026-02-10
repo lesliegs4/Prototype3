@@ -21,7 +21,7 @@ public class GameManager : MonoBehaviour
     [Header("Camera")]
     public float panDuration = 0.5f;
     public float cameraOffsetX = 2f;
-    public float cameraY = 0f;
+    public float cameraOffsetY = 2.5f;
 
     [Header("Progress")]
     public int score = 0;
@@ -43,7 +43,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("Found " + allPlatforms.Length + " platforms");
 
         player.ResetToPlatform(allPlatforms[0]);
-        PositionCameraAtPlatform(0);
+        cam.transform.position = GetCameraPositionForCurrentAndNext();
         SpawnPlankAtPlatform(0);
         WireAllLandingTriggers();
         
@@ -57,20 +57,33 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < allPlatforms.Length; i++)
         {
             Transform platform = allPlatforms[i];
-            LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
             
+            LandingTrigger lt = platform.GetComponentInChildren<LandingTrigger>();
             if (lt != null)
             {
                 lt.gm = this;
                 lt.platformIndex = i;
-                Debug.Log("✅ Platform " + i + " (" + platform.name + ") - Landing Trigger WIRED");
+                Debug.Log($"✅ Platform {i} - Player Landing Trigger WIRED");
             }
             else
             {
-                Debug.LogError("❌ Platform " + i + " (" + platform.name + ") - NO LandingTrigger found!");
+                Debug.LogError($"❌ Platform {i} - NO Player LandingTrigger found!");
+            }
+
+            PlankLandingDetector pld = platform.GetComponentInChildren<PlankLandingDetector>();
+            if (pld != null)
+            {
+                pld.gm = this;
+                pld.platformIndex = i;
+                Debug.Log($"✅ Platform {i} - Plank Landing Detector WIRED");
+            }
+            else
+            {
+                Debug.LogWarning($"⚠️ Platform {i} - NO PlankLandingDetector found!");
             }
         }
     }
+
 
     void SpawnPlankAtPlatform(int platformIndex)
     {
@@ -100,16 +113,16 @@ public class GameManager : MonoBehaviour
 
         score++;
 
-        // REMOVED: No sound effect when landing on regular platforms
-        // Only visual feedback (score counter)
-
-        // Check if this is the last platform (win condition)
         if (platformIndex >= allPlatforms.Length - 1)
         {
             state = State.Win;
             Debug.Log("🏆 YOU WIN!");
             
-            // Play win sound only when actually winning
+            int lastPlatformIndex = allPlatforms.Length - 1;
+            player.SnapToPlatformTopOnly(allPlatforms[lastPlatformIndex]);
+            player.StopWalking();
+            player.FreezeInPlace();
+            
             if (AudioManager.instance != null)
                 AudioManager.instance.PlaySuccess();
             
@@ -124,25 +137,16 @@ public class GameManager : MonoBehaviour
 
         currentPlatformIndex = platformIndex;
 
-        StartCoroutine(PanToNextPlatform());
+        StartCoroutine(PanCameraToCurrentAndNext());
     }
 
-    IEnumerator PanToNextPlatform()
+    IEnumerator PanCameraToCurrentAndNext()
     {
         state = State.Panning;
         Debug.Log("📷 Camera panning...");
 
-        int nextIndex = currentPlatformIndex + 1;
-        if (nextIndex >= allPlatforms.Length)
-        {
-            Debug.LogError("No next platform!");
-            yield break;
-        }
-
         Vector3 startPos = cam.transform.position;
-        Transform nextPlatform = allPlatforms[nextIndex];
-        float targetX = (allPlatforms[currentPlatformIndex].position.x + nextPlatform.position.x) / 2f + cameraOffsetX;
-        Vector3 targetPos = new Vector3(targetX, cameraY, -10f);
+        Vector3 targetPos = GetCameraPositionForCurrentAndNext();
 
         float t = 0f;
         while (t < 1f)
@@ -160,12 +164,25 @@ public class GameManager : MonoBehaviour
         Debug.Log("✅ Ready for next plank");
     }
 
-    void PositionCameraAtPlatform(int platformIndex)
+    Vector3 GetCameraPositionForCurrentAndNext()
     {
-        if (platformIndex >= allPlatforms.Length) return;
+        int nextIndex = currentPlatformIndex + 1;
         
-        float targetX = allPlatforms[platformIndex].position.x + cameraOffsetX;
-        cam.transform.position = new Vector3(targetX, cameraY, -10f);
+        if (nextIndex >= allPlatforms.Length)
+        {
+            Transform lastPlatform = allPlatforms[currentPlatformIndex];
+            float targetX = lastPlatform.position.x + cameraOffsetX;
+            float targetY = lastPlatform.position.y + cameraOffsetY;
+            return new Vector3(targetX, targetY, -10f);
+        }
+
+        Transform currentPlatform = allPlatforms[currentPlatformIndex];
+        Transform nextPlatform = allPlatforms[nextIndex];
+        
+        float midX = (currentPlatform.position.x + nextPlatform.position.x) / 2f + cameraOffsetX;
+        float midY = (currentPlatform.position.y + nextPlatform.position.y) / 2f + cameraOffsetY;
+        
+        return new Vector3(midX, midY, -10f);
     }
 
     public Transform GetNextPlatform()
@@ -174,6 +191,28 @@ public class GameManager : MonoBehaviour
         if (nextIndex >= allPlatforms.Length) return null;
         return allPlatforms[nextIndex];
     }
+
+    public Transform GetCurrentPlatform()
+    {
+        if (currentPlatformIndex < 0 || currentPlatformIndex >= allPlatforms.Length) return null;
+        return allPlatforms[currentPlatformIndex];
+    }
+
+    public void OnPlankLandedOnPlatform(int platformIndex)
+    {
+        if (state != GameManager.State.Rotating) return;
+        
+        int expectedIndex = currentPlatformIndex + 1;
+        if (platformIndex == expectedIndex)
+        {
+            Debug.Log($"✅ Plank successfully bridged to platform {platformIndex}");
+            if (activePlank != null)
+            {
+                activePlank.SetPlankLandedSuccessfully();
+            }
+        }
+    }
+
 
     public void GameOver()
     {

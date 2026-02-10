@@ -48,6 +48,14 @@ public class LandingTrigger : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             Debug.Log("✅✅✅ PLAYER LANDED ON PLATFORM " + platformIndex + " ✅✅✅");
+            
+            Rigidbody2D playerRb = other.GetComponent<Rigidbody2D>();
+            if (playerRb != null)
+            {
+                playerRb.linearVelocity = Vector2.zero;
+                playerRb.angularVelocity = 0f;
+            }
+            
             gm.OnPlayerLandedOnPlatform(platformIndex);
         }
         else

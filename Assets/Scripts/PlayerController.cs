@@ -51,7 +51,7 @@ public class PlayerController : MonoBehaviour
         Bounds pb = platCol.bounds;
         Bounds mb = col2d.bounds;
 
-        float newY = pb.max.y + mb.extents.y + 0.01f;
+        float newY = pb.max.y + mb.extents.y;
         transform.position = new Vector3(transform.position.x, newY, transform.position.z);
 
         rb.linearVelocity = Vector2.zero;
@@ -124,9 +124,8 @@ public class PlayerController : MonoBehaviour
 
         float margin = 0.25f;
         float x = pb.min.x + radiusX + margin;
-        float y = pb.max.y + radiusY + 0.01f;
+        float y = pb.max.y + radiusY;
 
-        // Clamp so we never place beyond right edge on tiny platforms
         float maxX = pb.max.x - radiusX - margin;
         x = Mathf.Min(x, maxX);
 

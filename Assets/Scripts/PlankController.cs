@@ -8,6 +8,7 @@ public class PlankController : MonoBehaviour
     public float growSpeed = 3.0f;
     public float rotateSpeed = 180f;
 
+    private bool landedSuccessfully = false;
     private bool wasHolding = false;
     private bool isRotating = false;
     private bool hitNextPlatform = false;
@@ -22,16 +23,21 @@ public class PlankController : MonoBehaviour
             plankCol = plankVisual.GetComponent<BoxCollider2D>();
             if (plankCol == null) plankCol = plankVisual.GetComponentInChildren<BoxCollider2D>();
             
-            // Add/get Rigidbody
+            if (plankCol != null)
+            {
+                plankCol.isTrigger = false;
+                plankCol.usedByComposite = false;
+            }
+            
             plankRB = plankVisual.GetComponent<Rigidbody2D>();
             if (plankRB == null)
             {
                 plankRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
             }
             
-            // Kinematic for controlled rotation
             plankRB.bodyType = RigidbodyType2D.Kinematic;
-            plankRB.useFullKinematicContacts = true;
+            plankRB.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            plankRB.interpolation = RigidbodyInterpolation2D.Interpolate;
         }
     }
 
@@ -74,33 +80,49 @@ public class PlankController : MonoBehaviour
 
         Debug.Log("🔄 Starting rotation...");
 
-        // Smooth rotation
         float currentAngle = 0f;
         float targetAngle = -90f;
         
-        while (currentAngle > targetAngle && !hitNextPlatform)
+        int checkCount = 0;
+        while (currentAngle > targetAngle)
         {
             float delta = rotateSpeed * Time.deltaTime;
             currentAngle = Mathf.Max(currentAngle - delta, targetAngle);
             transform.rotation = Quaternion.Euler(0, 0, currentAngle);
             
+            checkCount++;
+            if (checkCount % 10 == 0)
+            {
+                Debug.Log($"Checking at angle {currentAngle:F1}°");
+            }
+            
+            if (CheckIfTouchingNextPlatformTop())
+            {
+                Debug.Log("🎯 Plank touched the top of next platform during rotation! Stopping here.");
+                landedSuccessfully = true;
+                hitNextPlatform = true;
+                break;
+            }
+            
             yield return null;
         }
 
-        // Lock final rotation
-        transform.rotation = Quaternion.Euler(0, 0, -90f);
+        if (!landedSuccessfully)
+        {
+            transform.rotation = Quaternion.Euler(0, 0, -90f);
+        }
 
         if (AudioManager.instance != null)
             AudioManager.instance.PlayPlankLand();
 
-        // Small delay for physics
         yield return new WaitForSeconds(0.1f);
 
-        Debug.Log($"Rotation complete. Hit platform: {hitNextPlatform}");
+        Debug.Log($"Rotation complete. Landed successfully: {landedSuccessfully}");
 
-        if (hitNextPlatform)
+        if (landedSuccessfully && hitNextPlatform)
         {
             Debug.Log("✅ Plank bridged the gap!");
+            MakePlankSolidForPlayer();
             gm.state = GameManager.State.Walking;
             gm.player.BeginWalk();
         }
@@ -115,28 +137,89 @@ public class PlankController : MonoBehaviour
         isRotating = false;
     }
 
-    // Detect collision with platforms
-    void OnCollisionEnter2D(Collision2D collision)
+    bool CheckIfTouchingNextPlatformTop()
     {
-        if (!isRotating) return;
-
-        Debug.Log($"💥 Plank collided with: {collision.gameObject.name} (Layer: {LayerMask.LayerToName(collision.gameObject.layer)})");
-
-        // Check if it's a platform
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Platform"))
+        if (plankCol == null || plankVisual == null)
         {
-            Transform nextPlatform = gm.GetNextPlatform();
-            
-            if (collision.gameObject.transform == nextPlatform)
-            {
-                Debug.Log("✅ Hit the NEXT platform!");
-                hitNextPlatform = true;
-            }
-            else
-            {
-                Debug.Log("⚠️ Hit a platform, but not the next one");
-            }
+            Debug.LogWarning("Plank collider or visual is null");
+            return false;
         }
+
+        Transform nextPlatform = gm.GetNextPlatform();
+        if (nextPlatform == null)
+        {
+            Debug.LogWarning("Next platform is null");
+            return false;
+        }
+
+        Collider2D platformCol = nextPlatform.GetComponent<Collider2D>();
+        if (platformCol == null)
+        {
+            Debug.LogWarning($"Platform {nextPlatform.name} has no collider");
+            return false;
+        }
+
+        Transform currentPlatform = gm.GetCurrentPlatform();
+        Collider2D currentPlatformCol = currentPlatform != null ? currentPlatform.GetComponent<Collider2D>() : null;
+        
+        Bounds plankBounds = plankCol.bounds;
+        Bounds nextPlatformBounds = platformCol.bounds;
+
+        float currentPlatformRightX = currentPlatformCol != null ? currentPlatformCol.bounds.max.x : currentPlatform.position.x;
+        
+        float plankRightX = plankBounds.max.x;
+        
+        if (plankRightX <= currentPlatformRightX + 0.1f)
+        {
+            return false;
+        }
+
+        float nextPlatformTopY = nextPlatformBounds.max.y;
+        float nextPlatformLeftX = nextPlatformBounds.min.x;
+        float nextPlatformRightX = nextPlatformBounds.max.x;
+
+        float plankLeftX = plankBounds.min.x;
+        float plankBottomY = plankBounds.min.y;
+        float plankTopY = plankBounds.max.y;
+
+        float overlapStart = Mathf.Max(plankLeftX, nextPlatformLeftX);
+        float overlapEnd = Mathf.Min(plankRightX, nextPlatformRightX);
+        
+        bool hasHorizontalOverlap = overlapEnd > overlapStart;
+        
+        if (!hasHorizontalOverlap)
+        {
+            return false;
+        }
+
+        float currentPlatformY = currentPlatform.position.y;
+        bool isDownwardPlatform = nextPlatformTopY < currentPlatformY;
+        
+        float tolerance = isDownwardPlatform ? 0.5f : 0.3f;
+        bool plankCrossesOrTouchesPlatformTop = plankBottomY <= nextPlatformTopY + tolerance && plankTopY >= nextPlatformTopY - tolerance;
+
+        if (hasHorizontalOverlap && plankRightX > currentPlatformRightX + 0.5f)
+        {
+            float distanceToTarget = Mathf.Abs(plankBottomY - nextPlatformTopY);
+            Debug.Log($"Check: plankBottom={plankBottomY:F2}, plankTop={plankTopY:F2}, platformTop={nextPlatformTopY:F2}, dist={distanceToTarget:F2}, tolerance={tolerance:F2}, isDownward={isDownwardPlatform}");
+        }
+
+        if (plankCrossesOrTouchesPlatformTop)
+        {
+            Debug.Log($"🎯 TOUCH DETECTED! Plank bottom: {plankBottomY:F2}, top: {plankTopY:F2}, Platform top: {nextPlatformTopY:F2}, Downward: {isDownwardPlatform}");
+        }
+
+        return plankCrossesOrTouchesPlatformTop;
+    }
+
+    void MakePlankSolidForPlayer()
+    {
+        if (plankVisual == null) return;
+        
+        plankVisual.gameObject.layer = LayerMask.NameToLayer("Plank");
+        
+        Debug.Log($"🔧 Plank layer set to: {LayerMask.LayerToName(plankVisual.gameObject.layer)}");
+        Debug.Log($"🔧 Plank collider isTrigger: {plankCol?.isTrigger}, RB type: {plankRB?.bodyType}");
     }
 
     void SetupFallPhysics()
@@ -177,4 +260,11 @@ public class PlankController : MonoBehaviour
         
         Destroy(gameObject, 0.1f); 
     }
+
+    public void SetPlankLandedSuccessfully()
+    {
+        landedSuccessfully = true;
+        hitNextPlatform = true;
+    }
+
 }
