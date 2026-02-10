@@ -21,6 +21,17 @@ public class PlayerController : MonoBehaviour
     private RigidbodyConstraints2D prevConstraints;
     private float freefallTimer = 0f;
 
+    Animator anim;
+
+    void Start() {
+        anim = GetComponent<Animator>();
+    }
+
+    void Update() {
+        bool moving = Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f;
+        anim.SetBool("isRunning", moving);
+    }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
