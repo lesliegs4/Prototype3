@@ -14,6 +14,12 @@ public class PlayerController : MonoBehaviour
     public LayerMask groundMask;
     public float groundCheckDistance = 0.12f;
 
+    [Header("Ground (Floor) Fail Condition")]
+    [Tooltip("If true, colliding with Ground triggers immediate Game Over.")]
+    public bool enableGroundHitGameOver = true;
+    [Tooltip("Layers that trigger immediate Game Over on contact (Ground recommended). If empty, defaults to the 'Ground' layer when available.")]
+    public LayerMask groundKillMask;
+
     private bool walking = false;
     private Rigidbody2D rb;
     private Collider2D col2d;
@@ -58,6 +64,14 @@ public class PlayerController : MonoBehaviour
             if (platformLayer >= 0) mask |= 1 << platformLayer;
             if (plankLayer >= 0) mask |= 1 << plankLayer;
             groundMask = (mask != 0) ? mask : Physics2D.DefaultRaycastLayers;
+        }
+
+        // Default kill mask to the Ground layer if present.
+        if (groundKillMask.value == 0)
+        {
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            if (groundLayer >= 0)
+                groundKillMask = 1 << groundLayer;
         }
     }
 
@@ -187,6 +201,32 @@ public class PlayerController : MonoBehaviour
             Vector2 v = rb.linearVelocity;
             v.x = 0f;
             rb.linearVelocity = v;
+        }
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (!enableGroundHitGameOver || gm == null) return;
+        if (collision == null || collision.gameObject == null) return;
+
+        int otherLayer = collision.gameObject.layer;
+        if (((1 << otherLayer) & groundKillMask.value) != 0)
+        {
+            StopWalking();
+            gm.GameOverImmediate();
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (!enableGroundHitGameOver || gm == null) return;
+        if (other == null) return;
+
+        int otherLayer = other.gameObject.layer;
+        if (((1 << otherLayer) & groundKillMask.value) != 0)
+        {
+            StopWalking();
+            gm.GameOverImmediate();
         }
     }
     

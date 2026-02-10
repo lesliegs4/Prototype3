@@ -9,6 +9,7 @@ public class GameManager : MonoBehaviour
     [Header("References")]
     public PlayerController player;
     public Camera cam;
+    public SpriteRenderer groundSprite;
 
     [Header("Level Platforms")]
     public Transform[] allPlatforms;
@@ -34,6 +35,12 @@ public class GameManager : MonoBehaviour
 
     [Header("UI")]
     public UIManager uiManager;
+
+    [Header("Rendering")]
+    [Tooltip("Lower = further back. Ground should stay behind everything else.")]
+    public int groundSortingOrder = -100;
+    [Tooltip("Higher = in front. Player sprite(s) should render above ground.")]
+    public int playerSortingOrder = 100;
 
     [Header("Failure Handling")]
     [Tooltip("How far below the lower of (current/next) platform tops the player must fall before Game Over triggers.")]
@@ -76,6 +83,7 @@ public class GameManager : MonoBehaviour
         cam.transform.position = GetCameraPositionForCurrentAndNext();
         SpawnPlankAtPlatform(0);
         WireAllLandingTriggers();
+        EnforceBasicSpriteSorting();
         
         Debug.Log("=== SETUP COMPLETE ===");
     }
@@ -395,6 +403,27 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void GameOverImmediate()
+    {
+        if (state == State.GameOver || state == State.Win) return;
+        state = State.GameOver;
+        Debug.Log("💀 GAME OVER (immediate)");
+
+        if (AudioManager.instance != null)
+            AudioManager.instance.PlayFail();
+
+        if (loseRoutine != null)
+        {
+            StopCoroutine(loseRoutine);
+            loseRoutine = null;
+        }
+
+        if (uiManager != null)
+        {
+            uiManager.ShowLoseScreen();
+        }
+    }
+
     IEnumerator ShowLoseScreenDelayed()
     {
         yield return new WaitForSeconds(1.5f);
@@ -434,5 +463,33 @@ public class GameManager : MonoBehaviour
         if (platform == null) return 0f;
         Collider2D c = platform.GetComponent<Collider2D>();
         return c != null ? c.bounds.max.y : platform.position.y;
+    }
+
+    void EnforceBasicSpriteSorting()
+    {
+        // Ground: keep it behind the player (and usually behind platforms too).
+        if (groundSprite == null)
+        {
+            // Prefer tag if it exists; otherwise fall back to the common scene object name.
+            GameObject groundGO = null;
+            try { groundGO = GameObject.FindWithTag("Ground"); } catch { /* tag may not exist */ }
+            if (groundGO == null) groundGO = GameObject.Find("Ground");
+            if (groundGO != null) groundSprite = groundGO.GetComponent<SpriteRenderer>();
+        }
+
+        if (groundSprite != null)
+        {
+            groundSprite.sortingOrder = groundSortingOrder;
+        }
+
+        // Player: bump all SpriteRenderers in the player hierarchy forward.
+        if (player != null)
+        {
+            SpriteRenderer[] renderers = player.GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
+            foreach (var r in renderers)
+            {
+                if (r != null) r.sortingOrder = playerSortingOrder;
+            }
+        }
     }
 }
