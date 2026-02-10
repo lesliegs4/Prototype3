@@ -47,8 +47,12 @@ public class GameManager : MonoBehaviour
     [Tooltip("Press the key to jump directly to a platform for quick testing.")]
     public bool enableDebugJump = true;
     public KeyCode debugJumpKey = KeyCode.C;
-    [Tooltip("0-based platform index. 4 means 'platform 5'.")]
-    public int debugJumpPlatformIndex = 4;
+    [Tooltip("If set, jump will target the platform GameObject by name (scene name), e.g. 'StarterPlatform (5)'.")]
+    public string debugJumpPlatformName = "StarterPlatform (5)";
+    [Tooltip("When jumping by name, also override the score to this value (set -1 to keep current score).")]
+    public int debugJumpScoreOverride = 4;
+    [Tooltip("Fallback 0-based platform index if name isn't found.")]
+    public int debugJumpPlatformIndex = 5;
 
     void Start()
     {
@@ -81,11 +85,14 @@ public class GameManager : MonoBehaviour
         if (!enableDebugJump) return;
         if (Input.GetKeyDown(debugJumpKey))
         {
-            JumpToPlatformIndex(debugJumpPlatformIndex);
+            if (!string.IsNullOrWhiteSpace(debugJumpPlatformName) && JumpToPlatformByName(debugJumpPlatformName, debugJumpScoreOverride))
+                return;
+
+            JumpToPlatformIndex(debugJumpPlatformIndex, keepScore: true);
         }
     }
 
-    public void JumpToPlatformIndex(int platformIndex)
+    public void JumpToPlatformIndex(int platformIndex, bool keepScore = false)
     {
         if (allPlatforms == null || allPlatforms.Length == 0) return;
         if (platformIndex < 0 || platformIndex >= allPlatforms.Length) return;
@@ -101,7 +108,10 @@ public class GameManager : MonoBehaviour
 
         state = State.Building;
         currentPlatformIndex = platformIndex;
-        score = platformIndex; // score increments once per landing; index aligns with progress count.
+        if (!keepScore)
+        {
+            score = platformIndex; // score increments once per landing; index aligns with progress count.
+        }
 
         // Reset player + camera to this segment.
         player.Unfreeze();
@@ -116,7 +126,47 @@ public class GameManager : MonoBehaviour
         }
         SpawnPlankAtPlatform(currentPlatformIndex);
 
-        Debug.Log($"🧪 Debug jump: now at platform {currentPlatformIndex} (score={score}, winScore={winScore})");
+        Debug.Log($"🧪 Debug jump: now at platform {currentPlatformIndex} (score={score}, winScore={winScore}, keepScore={keepScore})");
+    }
+
+    public bool JumpToPlatformByName(string platformName, int scoreOverride = -1)
+    {
+        if (string.IsNullOrWhiteSpace(platformName)) return false;
+        if (allPlatforms == null || allPlatforms.Length == 0) return false;
+
+        int idx = -1;
+        for (int i = 0; i < allPlatforms.Length; i++)
+        {
+            if (allPlatforms[i] != null && allPlatforms[i].name == platformName)
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        if (idx < 0)
+        {
+            // As a backup, try finding it in the scene and mapping to our array.
+            GameObject go = GameObject.Find(platformName);
+            if (go != null)
+            {
+                Transform t = go.transform;
+                for (int i = 0; i < allPlatforms.Length; i++)
+                {
+                    if (allPlatforms[i] == t)
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (idx < 0) return false;
+
+        JumpToPlatformIndex(idx, keepScore: true);
+        if (scoreOverride >= 0) score = scoreOverride;
+        return true;
     }
 
     void SyncAndSortPlatforms()
