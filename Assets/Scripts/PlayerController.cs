@@ -91,6 +91,12 @@ public class PlayerController : MonoBehaviour
         if (gm.state == GameManager.State.Win)
             return;
 
+        // If the plank failed, only trigger GameOver once we actually fall far enough.
+        if (gm.IsFailurePending() && transform.position.y < gm.GetFailureYThreshold())
+        {
+            gm.GameOver();
+        }
+
         // Keep walking if the state is Walking OR if we just hit GameOver
         if ((gm.state == GameManager.State.Walking || gm.state == GameManager.State.GameOver) && walking)
         {

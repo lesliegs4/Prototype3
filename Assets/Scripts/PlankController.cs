@@ -75,6 +75,7 @@ public class PlankController : MonoBehaviour
     IEnumerator RotateAndCheck()
     {
         isRotating = true;
+        landedSuccessfully = false;
         hitNextPlatform = false;
         gm.state = GameManager.State.Rotating;
 
@@ -96,7 +97,8 @@ public class PlankController : MonoBehaviour
                 Debug.Log($"Checking at angle {currentAngle:F1}°");
             }
             
-            if (CheckIfTouchingNextPlatformTop())
+            // Either our math check hits, or the next platform's trigger told the GM we made contact.
+            if (hitNextPlatform || CheckIfTouchingNextPlatformTop())
             {
                 Debug.Log("🎯 Plank touched the top of next platform during rotation! Stopping here.");
                 landedSuccessfully = true;
@@ -129,7 +131,11 @@ public class PlankController : MonoBehaviour
         else
         {
             Debug.Log("❌ Plank didn't reach!");
-            gm.GameOver();
+            // Don't immediately go to GameOver. The physics can still allow a "late" landing
+            // (especially on downward platforms). Mark failure pending and only GameOver if the
+            // player truly falls out of bounds.
+            gm.BeginFailurePending();
+            gm.state = GameManager.State.Walking;
             gm.player.BeginWalk();
             SetupFallPhysics();
         }
@@ -161,55 +167,48 @@ public class PlankController : MonoBehaviour
 
         Transform currentPlatform = gm.GetCurrentPlatform();
         Collider2D currentPlatformCol = currentPlatform != null ? currentPlatform.GetComponent<Collider2D>() : null;
-        
-        Bounds plankBounds = plankCol.bounds;
-        Bounds nextPlatformBounds = platformCol.bounds;
 
         float currentPlatformRightX = currentPlatformCol != null ? currentPlatformCol.bounds.max.x : currentPlatform.position.x;
-        
-        float plankRightX = plankBounds.max.x;
-        
-        if (plankRightX <= currentPlatformRightX + 0.1f)
+
+
+        // Using rotated AABB bounds is unreliable while the plank is rotating (especially on diagonals).
+        // Instead, use the plank "tip" point and measure proximity to the *top* of the next platform.
+        Vector2 tipWorld = GetPlankTipWorld();
+
+        if (tipWorld.x <= currentPlatformRightX + 0.05f) return false;
+
+        Bounds nextBounds = platformCol.bounds;
+        float nextTopY = nextBounds.max.y;
+
+        float currentPlatformY = currentPlatform != null ? currentPlatform.position.y : nextPlatform.position.y;
+        bool isDownwardPlatform = nextTopY < currentPlatformY;
+
+        float xMargin = 0.2f;
+        if (tipWorld.x < nextBounds.min.x - xMargin || tipWorld.x > nextBounds.max.x + xMargin) return false;
+
+        Vector2 closest = platformCol.ClosestPoint(tipWorld);
+        float distance = Vector2.Distance(tipWorld, closest);
+
+        float maxContactDistance = isDownwardPlatform ? 0.35f : 0.25f;
+        float topTolerance = isDownwardPlatform ? 0.6f : 0.35f;
+        bool closestIsOnTopSurface = Mathf.Abs(closest.y - nextTopY) <= topTolerance;
+
+        if (distance <= maxContactDistance && closestIsOnTopSurface)
         {
-            return false;
+            Debug.Log($"🎯 TOUCH DETECTED! tip={tipWorld} closest={closest} dist={distance:F2} topY={nextTopY:F2} downward={isDownwardPlatform}");
+            return true;
         }
 
-        float nextPlatformTopY = nextPlatformBounds.max.y;
-        float nextPlatformLeftX = nextPlatformBounds.min.x;
-        float nextPlatformRightX = nextPlatformBounds.max.x;
+        return false;
+    }
 
-        float plankLeftX = plankBounds.min.x;
-        float plankBottomY = plankBounds.min.y;
-        float plankTopY = plankBounds.max.y;
+    public Vector2 GetPlankTipWorld()
+    {
+        if (plankCol == null) return plankVisual != null ? (Vector2)plankVisual.position : Vector2.zero;
 
-        float overlapStart = Mathf.Max(plankLeftX, nextPlatformLeftX);
-        float overlapEnd = Mathf.Min(plankRightX, nextPlatformRightX);
-        
-        bool hasHorizontalOverlap = overlapEnd > overlapStart;
-        
-        if (!hasHorizontalOverlap)
-        {
-            return false;
-        }
-
-        float currentPlatformY = currentPlatform.position.y;
-        bool isDownwardPlatform = nextPlatformTopY < currentPlatformY;
-        
-        float tolerance = isDownwardPlatform ? 0.5f : 0.3f;
-        bool plankCrossesOrTouchesPlatformTop = plankBottomY <= nextPlatformTopY + tolerance && plankTopY >= nextPlatformTopY - tolerance;
-
-        if (hasHorizontalOverlap && plankRightX > currentPlatformRightX + 0.5f)
-        {
-            float distanceToTarget = Mathf.Abs(plankBottomY - nextPlatformTopY);
-            Debug.Log($"Check: plankBottom={plankBottomY:F2}, plankTop={plankTopY:F2}, platformTop={nextPlatformTopY:F2}, dist={distanceToTarget:F2}, tolerance={tolerance:F2}, isDownward={isDownwardPlatform}");
-        }
-
-        if (plankCrossesOrTouchesPlatformTop)
-        {
-            Debug.Log($"🎯 TOUCH DETECTED! Plank bottom: {plankBottomY:F2}, top: {plankTopY:F2}, Platform top: {nextPlatformTopY:F2}, Downward: {isDownwardPlatform}");
-        }
-
-        return plankCrossesOrTouchesPlatformTop;
+        // Local-space top-center of the BoxCollider2D.
+        Vector2 localTopCenter = plankCol.offset + Vector2.up * (plankCol.size.y * 0.5f);
+        return plankCol.transform.TransformPoint(localTopCenter);
     }
 
     void MakePlankSolidForPlayer()

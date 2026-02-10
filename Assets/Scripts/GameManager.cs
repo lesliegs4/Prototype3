@@ -30,6 +30,14 @@ public class GameManager : MonoBehaviour
     [Header("UI")]
     public UIManager uiManager;
 
+    [Header("Failure Handling")]
+    [Tooltip("How far below the lower of (current/next) platform tops the player must fall before Game Over triggers.")]
+    public float fallOutOfBoundsMargin = 2.5f;
+
+    private bool failurePending = false;
+    private float failureYThreshold = float.NegativeInfinity;
+    private Coroutine loseRoutine;
+
     void Start()
     {
         Debug.Log("=== GAME MANAGER START ===");
@@ -107,13 +115,24 @@ public class GameManager : MonoBehaviour
 
     public void OnPlayerLandedOnPlatform(int platformIndex)
     {
-        if (state == State.GameOver || state == State.Win) return;
+        if (state == State.Win) return;
 
         Debug.Log("🎯 Player landed on platform " + platformIndex);
 
+        // If we previously thought the plank failed, landing overrides that.
+        failurePending = false;
+
+        // If a lose screen delay was scheduled, cancel it.
+        if (loseRoutine != null)
+        {
+            StopCoroutine(loseRoutine);
+            loseRoutine = null;
+        }
+
         score++;
 
-        if (platformIndex >= allPlatforms.Length - 1)
+        // Primary win condition is score-based (matches UI "score / winScore").
+        if (score >= winScore)
         {
             state = State.Win;
             Debug.Log("🏆 YOU WIN!");
@@ -126,6 +145,25 @@ public class GameManager : MonoBehaviour
             if (AudioManager.instance != null)
                 AudioManager.instance.PlaySuccess();
             
+            if (uiManager != null) uiManager.ShowWinScreen();
+            return;
+        }
+
+        // If we haven't hit the score target but we're at the end of the platform list,
+        // there is nowhere to pan/spawn the next plank—treat as a forced win.
+        if (platformIndex >= allPlatforms.Length - 1)
+        {
+            state = State.Win;
+            Debug.LogWarning("🏁 Reached final platform before winScore; forcing win because no next platform exists.");
+            
+            int lastPlatformIndex = allPlatforms.Length - 1;
+            player.SnapToPlatformTopOnly(allPlatforms[lastPlatformIndex]);
+            player.StopWalking();
+            player.FreezeInPlace();
+
+            if (AudioManager.instance != null)
+                AudioManager.instance.PlaySuccess();
+
             if (uiManager != null) uiManager.ShowWinScreen();
             return;
         }
@@ -225,7 +263,7 @@ public class GameManager : MonoBehaviour
 
         if (uiManager != null)
         {
-            StartCoroutine(ShowLoseScreenDelayed());
+            loseRoutine = StartCoroutine(ShowLoseScreenDelayed());
         }
     }
 
@@ -233,5 +271,40 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSeconds(1.5f);
         uiManager.ShowLoseScreen();
+    }
+
+    public void BeginFailurePending()
+    {
+        // Keep the game in Walking so the player can still potentially land.
+        // We only trigger actual GameOver if the player falls below a threshold.
+        failurePending = true;
+
+        Transform current = GetCurrentPlatform();
+        Transform next = GetNextPlatform();
+
+        float currentTopY = current != null ? GetPlatformTopY(current) : player.transform.position.y;
+        float nextTopY = next != null ? GetPlatformTopY(next) : currentTopY;
+
+        float baseTop = Mathf.Min(currentTopY, nextTopY);
+        failureYThreshold = baseTop - Mathf.Abs(fallOutOfBoundsMargin);
+
+        Debug.Log($"⚠️ Failure pending. Fall threshold Y={failureYThreshold:F2} (currentTop={currentTopY:F2}, nextTop={nextTopY:F2})");
+    }
+
+    public bool IsFailurePending()
+    {
+        return failurePending;
+    }
+
+    public float GetFailureYThreshold()
+    {
+        return failureYThreshold;
+    }
+
+    float GetPlatformTopY(Transform platform)
+    {
+        if (platform == null) return 0f;
+        Collider2D c = platform.GetComponent<Collider2D>();
+        return c != null ? c.bounds.max.y : platform.position.y;
     }
 }
