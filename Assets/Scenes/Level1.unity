@@ -5567,6 +5567,7 @@ GameObject:
   - component: {fileID: 1904573610}
   - component: {fileID: 1904573609}
   - component: {fileID: 1904573608}
+  - component: {fileID: 1904573613}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -5588,6 +5589,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   gm: {fileID: 716781905}
   walkSpeed: 3
+  enableFreefallGameOver: 1
+  freefallGameOverDelay: 2.5
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 0
+  groundCheckDistance: 0.12
 --- !u!50 &1904573609
 Rigidbody2D:
   serializedVersion: 5
@@ -5725,6 +5732,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!95 &1904573613
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904573607}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 3a7101dcbf92a40f39dbc3b7bdad236a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &1920370385
 PrefabInstance:
   m_ObjectHideFlags: 0
