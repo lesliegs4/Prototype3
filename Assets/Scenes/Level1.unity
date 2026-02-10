@@ -1154,6 +1154,135 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 489959313}
   m_CullTransparentMesh: 1
+--- !u!1 &491252810
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 491252812}
+  - component: {fileID: 491252811}
+  m_Layer: 0
+  m_Name: BGSound
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!82 &491252811
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 491252810}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 933dfd2cda9a3954c8186e1cd0a3fab6, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 0.395
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!4 &491252812
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 491252810}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.46663, y: 3.89323, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &524670650
 GameObject:
   m_ObjectHideFlags: 0
@@ -1607,6 +1736,7 @@ MonoBehaviour:
   state: 0
   player: {fileID: 1904573608}
   cam: {fileID: 2126489988}
+  groundSprite: {fileID: 0}
   allPlatforms:
   - {fileID: 243703077}
   - {fileID: 1649396328}
@@ -1623,9 +1753,13 @@ MonoBehaviour:
   score: 0
   winScore: 10
   uiManager: {fileID: 1855410737}
+  groundSortingOrder: -100
+  playerSortingOrder: 100
   fallOutOfBoundsMargin: 2.5
   enableDebugJump: 1
   debugJumpKey: 99
+  debugJumpPlatformName: StarterPlatform (5)
+  debugJumpScoreOverride: 4
   debugJumpPlatformIndex: 4
 --- !u!4 &716781906
 Transform:
@@ -5589,12 +5723,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   gm: {fileID: 716781905}
   walkSpeed: 3
+  runLoopClip: {fileID: 8300000, guid: 9e4d23e42db1814438fbf7bf1c3a5f75, type: 3}
+  runLoopSource: {fileID: 0}
+  runLoopVolume: 1
   enableFreefallGameOver: 1
   freefallGameOverDelay: 2.5
   groundMask:
     serializedVersion: 2
     m_Bits: 0
   groundCheckDistance: 0.12
+  enableGroundHitGameOver: 1
+  groundKillMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!50 &1904573609
 Rigidbody2D:
   serializedVersion: 5
@@ -5727,7 +5868,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1.0148, y: -2.01, z: 0}
-  m_LocalScale: {x: 0.73517185, y: 0.7499581, z: 1}
+  m_LocalScale: {x: 0.73517185, y: 0.6, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -6614,3 +6755,4 @@ SceneRoots:
   - {fileID: 1499780207}
   - {fileID: 1775370899}
   - {fileID: 341530256}
+  - {fileID: 491252812}
