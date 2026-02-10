@@ -103,6 +103,14 @@ public class PlankController : MonoBehaviour
                 Debug.Log("🎯 Plank touched the top of next platform during rotation! Stopping here.");
                 landedSuccessfully = true;
                 hitNextPlatform = true;
+
+                // If the next platform is not higher than the current one (including downward/moving cases),
+                // finishing to exactly horizontal prevents a small visual/physics "gap" at the landing edge.
+                if (ShouldSnapToHorizontalOnLanding())
+                {
+                    currentAngle = targetAngle;
+                    transform.rotation = Quaternion.Euler(0, 0, currentAngle);
+                }
                 break;
             }
             
@@ -141,6 +149,26 @@ public class PlankController : MonoBehaviour
         }
 
         isRotating = false;
+    }
+
+    bool ShouldSnapToHorizontalOnLanding()
+    {
+        if (gm == null) return true;
+
+        Transform currentPlatform = gm.GetCurrentPlatform();
+        Transform nextPlatform = gm.GetNextPlatform();
+        if (currentPlatform == null || nextPlatform == null) return true;
+
+        Collider2D currentCol = currentPlatform.GetComponent<Collider2D>();
+        Collider2D nextCol = nextPlatform.GetComponent<Collider2D>();
+        if (currentCol == null || nextCol == null) return true;
+
+        float currentTopY = currentCol.bounds.max.y;
+        float nextTopY = nextCol.bounds.max.y;
+
+        // Only avoid snapping when the next platform is meaningfully higher (we want to stop on contact).
+        const float higherThreshold = 0.05f;
+        return nextTopY <= currentTopY + higherThreshold;
     }
 
     bool CheckIfTouchingNextPlatformTop()
