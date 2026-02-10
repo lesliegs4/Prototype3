@@ -4,12 +4,22 @@ public class PlayerController : MonoBehaviour
 {
     public GameManager gm;
     public float walkSpeed = 3f;
+    
+    [Header("Fail Conditions")]
+    [Tooltip("If true, triggers Game Over if the player is ungrounded for longer than the delay.")]
+    public bool enableFreefallGameOver = true;
+    [Tooltip("Seconds of continuous falling/ungrounded time before Game Over.")]
+    public float freefallGameOverDelay = 2.5f;
+    [Tooltip("Layers considered 'ground' for freefall detection (Platform + Plank recommended). If left empty, defaults to Platform/Plank layers when available.")]
+    public LayerMask groundMask;
+    public float groundCheckDistance = 0.12f;
 
     private bool walking = false;
     private Rigidbody2D rb;
     private Collider2D col2d;
 
     private RigidbodyConstraints2D prevConstraints;
+    private float freefallTimer = 0f;
 
     void Awake()
     {
@@ -21,6 +31,17 @@ public class PlayerController : MonoBehaviour
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
             rb.freezeRotation = true;
+        }
+
+        // If the mask wasn't set in the inspector, try to build a reasonable default.
+        if (groundMask.value == 0)
+        {
+            int mask = 0;
+            int platformLayer = LayerMask.NameToLayer("Platform");
+            int plankLayer = LayerMask.NameToLayer("Plank");
+            if (platformLayer >= 0) mask |= 1 << platformLayer;
+            if (plankLayer >= 0) mask |= 1 << plankLayer;
+            groundMask = (mask != 0) ? mask : Physics2D.DefaultRaycastLayers;
         }
     }
 
@@ -91,6 +112,33 @@ public class PlayerController : MonoBehaviour
         if (gm.state == GameManager.State.Win)
             return;
 
+        // Freefall -> GameOver (covers cases where plank-check fails too early, or player slips off).
+        if (enableFreefallGameOver)
+        {
+            if (gm.state != GameManager.State.Walking || !walking)
+            {
+                freefallTimer = 0f;
+            }
+            else
+            {
+                bool grounded = IsGrounded();
+                if (grounded)
+                {
+                    freefallTimer = 0f;
+                }
+                else
+                {
+                    // Count time while ungrounded. We don't require high downward speed because
+                    // stepping off an edge starts with small/zero Y velocity.
+                    freefallTimer += Time.fixedDeltaTime;
+                    if (freefallTimer >= Mathf.Max(0.1f, freefallGameOverDelay))
+                    {
+                        gm.GameOver();
+                    }
+                }
+            }
+        }
+
         // If the plank failed, only trigger GameOver once we actually fall far enough.
         if (gm.IsFailurePending() && transform.position.y < gm.GetFailureYThreshold())
         {
@@ -118,6 +166,7 @@ public class PlayerController : MonoBehaviour
         if (platform == null || col2d == null || rb == null) return;
 
         walking = false;
+        freefallTimer = 0f;
 
         Collider2D platCol = platform.GetComponent<Collider2D>();
         if (platCol == null) return;
@@ -140,5 +189,26 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.Sleep();
+    }
+
+    bool IsGrounded()
+    {
+        if (col2d == null) return false;
+
+        Bounds b = col2d.bounds;
+
+        // 3-ray check: left/center/right from just above the bottom of the collider.
+        float insetX = Mathf.Min(0.05f, b.extents.x * 0.5f);
+        Vector2 originC = new Vector2(b.center.x, b.min.y + 0.02f);
+        Vector2 originL = new Vector2(b.center.x - b.extents.x + insetX, originC.y);
+        Vector2 originR = new Vector2(b.center.x + b.extents.x - insetX, originC.y);
+
+        return HitsGround(originC) || HitsGround(originL) || HitsGround(originR);
+    }
+
+    bool HitsGround(Vector2 origin)
+    {
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, Mathf.Max(0.01f, groundCheckDistance), groundMask);
+        return hit.collider != null && hit.collider != col2d;
     }
 }
