@@ -11,6 +11,9 @@ public class UIManager : MonoBehaviour
     
     [Header("Score Display")]
     public TextMeshProUGUI scoreText;
+
+    // UI-only display total (doesn't affect win logic).
+    private const int ScoreDisplayTotal = 8;
     
     [Header("References")]
     public GameManager gm;
@@ -28,7 +31,7 @@ public class UIManager : MonoBehaviour
         // Update score display during gameplay
         if (scoreText != null && gm != null)
         {
-            scoreText.text = gm.score + " / " + gm.winScore;
+            scoreText.text = gm.score + " / " + ScoreDisplayTotal;
         }
         
         // Press ESC to pause
