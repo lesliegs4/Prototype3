@@ -13,6 +13,11 @@ public class GameManager : MonoBehaviour
     [Header("Level Platforms")]
     public Transform[] allPlatforms;
     private int currentPlatformIndex = 0;
+    
+    [Tooltip("If enabled, rebuilds/sorts the platform list at runtime using the Platform tag.")]
+    public bool autoSyncPlatformsFromTag = true;
+    public string platformTag = "Platform";
+    public bool sortPlatformsLeftToRight = true;
 
     [Header("Plank")]
     public GameObject plankPivotPrefab;
@@ -38,9 +43,18 @@ public class GameManager : MonoBehaviour
     private float failureYThreshold = float.NegativeInfinity;
     private Coroutine loseRoutine;
 
+    [Header("Debug")]
+    [Tooltip("Press the key to jump directly to a platform for quick testing.")]
+    public bool enableDebugJump = true;
+    public KeyCode debugJumpKey = KeyCode.C;
+    [Tooltip("0-based platform index. 4 means 'platform 5'.")]
+    public int debugJumpPlatformIndex = 4;
+
     void Start()
     {
         Debug.Log("=== GAME MANAGER START ===");
+
+        SyncAndSortPlatforms();
         
         if (allPlatforms.Length == 0)
         {
@@ -50,12 +64,95 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("Found " + allPlatforms.Length + " platforms");
 
+        // UI shows "score / winScore". Score increments on each successful landing (start platform doesn't count),
+        // so for N platforms the target transitions is N-1.
+        winScore = Mathf.Max(1, allPlatforms.Length - 1);
+
         player.ResetToPlatform(allPlatforms[0]);
         cam.transform.position = GetCameraPositionForCurrentAndNext();
         SpawnPlankAtPlatform(0);
         WireAllLandingTriggers();
         
         Debug.Log("=== SETUP COMPLETE ===");
+    }
+
+    void Update()
+    {
+        if (!enableDebugJump) return;
+        if (Input.GetKeyDown(debugJumpKey))
+        {
+            JumpToPlatformIndex(debugJumpPlatformIndex);
+        }
+    }
+
+    public void JumpToPlatformIndex(int platformIndex)
+    {
+        if (allPlatforms == null || allPlatforms.Length == 0) return;
+        if (platformIndex < 0 || platformIndex >= allPlatforms.Length) return;
+        if (player == null || cam == null) return;
+
+        // Clear any pending failure/lose UI.
+        failurePending = false;
+        if (loseRoutine != null)
+        {
+            StopCoroutine(loseRoutine);
+            loseRoutine = null;
+        }
+
+        state = State.Building;
+        currentPlatformIndex = platformIndex;
+        score = platformIndex; // score increments once per landing; index aligns with progress count.
+
+        // Reset player + camera to this segment.
+        player.Unfreeze();
+        player.ResetToPlatform(allPlatforms[currentPlatformIndex]);
+        cam.transform.position = GetCameraPositionForCurrentAndNext();
+
+        // Replace the current plank, if any.
+        if (activePlank != null)
+        {
+            Destroy(activePlank.gameObject);
+            activePlank = null;
+        }
+        SpawnPlankAtPlatform(currentPlatformIndex);
+
+        Debug.Log($"🧪 Debug jump: now at platform {currentPlatformIndex} (score={score}, winScore={winScore})");
+    }
+
+    void SyncAndSortPlatforms()
+    {
+        if (!autoSyncPlatformsFromTag) return;
+
+        GameObject[] tagged = null;
+        try
+        {
+            tagged = GameObject.FindGameObjectsWithTag(platformTag);
+        }
+        catch
+        {
+            // Tag doesn't exist or is invalid; leave list as-is.
+            return;
+        }
+
+        if (tagged == null || tagged.Length == 0) return;
+
+        // Always sync to match scene platforms so newly-added ones become part of the run without manual array edits.
+        allPlatforms = new Transform[tagged.Length];
+        for (int i = 0; i < tagged.Length; i++) allPlatforms[i] = tagged[i].transform;
+
+        if (sortPlatformsLeftToRight)
+        {
+            System.Array.Sort(allPlatforms, (a, b) =>
+            {
+                if (a == null && b == null) return 0;
+                if (a == null) return 1;
+                if (b == null) return -1;
+
+                int x = a.position.x.CompareTo(b.position.x);
+                if (x != 0) return x;
+                return a.position.y.CompareTo(b.position.y);
+            });
+        }
     }
 
     void WireAllLandingTriggers()
@@ -131,8 +228,8 @@ public class GameManager : MonoBehaviour
 
         score++;
 
-        // Primary win condition is score-based (matches UI "score / winScore").
-        if (score >= winScore)
+        // Win when reaching the final platform in the ordered list.
+        if (platformIndex >= allPlatforms.Length - 1)
         {
             state = State.Win;
             Debug.Log("🏆 YOU WIN!");
@@ -145,25 +242,6 @@ public class GameManager : MonoBehaviour
             if (AudioManager.instance != null)
                 AudioManager.instance.PlaySuccess();
             
-            if (uiManager != null) uiManager.ShowWinScreen();
-            return;
-        }
-
-        // If we haven't hit the score target but we're at the end of the platform list,
-        // there is nowhere to pan/spawn the next plank—treat as a forced win.
-        if (platformIndex >= allPlatforms.Length - 1)
-        {
-            state = State.Win;
-            Debug.LogWarning("🏁 Reached final platform before winScore; forcing win because no next platform exists.");
-            
-            int lastPlatformIndex = allPlatforms.Length - 1;
-            player.SnapToPlatformTopOnly(allPlatforms[lastPlatformIndex]);
-            player.StopWalking();
-            player.FreezeInPlace();
-
-            if (AudioManager.instance != null)
-                AudioManager.instance.PlaySuccess();
-
             if (uiManager != null) uiManager.ShowWinScreen();
             return;
         }
