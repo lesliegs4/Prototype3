@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
 
     private RigidbodyConstraints2D prevConstraints;
     private float freefallTimer = 0f;
+    private bool isFrozen = false;
 
     Animator anim;
 
@@ -27,10 +28,14 @@ public class PlayerController : MonoBehaviour
         anim = GetComponent<Animator>();
     }
 
-    void Update() {
-        bool moving = Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f;
-        anim.SetBool("isRunning", moving);
+    void Update()
+    {
+        if (anim == null || gm == null) return;
+
+        bool shouldRun = !isFrozen && walking && gm.state == GameManager.State.Walking;
+        anim.SetBool("isRunning", shouldRun);
     }
+
 
     void Awake()
     {
@@ -93,6 +98,13 @@ public class PlayerController : MonoBehaviour
     public void FreezeInPlace()
     {
         walking = false;
+        isFrozen = true;
+
+        if(anim != null)
+        {
+            anim.SetBool("isRunning", false);
+        }
+
         if (rb == null) return;
 
         prevConstraints = rb.constraints;
@@ -109,10 +121,17 @@ public class PlayerController : MonoBehaviour
 
     public void Unfreeze()
     {
+        isFrozen = false;
+
         if (rb == null) return;
 
         rb.constraints = (prevConstraints == 0) ? RigidbodyConstraints2D.FreezeRotation : prevConstraints;
         rb.WakeUp();
+
+        if (anim != null)
+        {
+            anim.SetBool("isRunning", walking && gm != null && gm.state == GameManager.State.Walking);
+        }
     }
 
     void FixedUpdate()
