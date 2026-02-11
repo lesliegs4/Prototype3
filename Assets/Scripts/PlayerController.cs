@@ -232,7 +232,10 @@ public class PlayerController : MonoBehaviour
         // Freefall -> GameOver (covers cases where plank-check fails too early, or player slips off).
         if (enableFreefallGameOver)
         {
-            if (gm.state != GameManager.State.Walking || !walking)
+            // IMPORTANT: This must run even in Building state.
+            // If we only check during Walking, a player can slip/fall while Building (or while the camera
+            // isn't following) and never trigger Game Over.
+            if (isFrozen || gm.state == GameManager.State.GameOver)
             {
                 freefallTimer = 0f;
             }

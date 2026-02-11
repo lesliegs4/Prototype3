@@ -5012,7 +5012,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 5.129117, y: 0.21140683}
+  m_Size: {x: 4, y: 0.21140683}
   m_EdgeRadius: 0
 --- !u!1 &1583933411
 GameObject:
@@ -5621,11 +5621,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Size.y
-      value: 1.2810287
+      value: 1.2752736
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Offset.y
-      value: -0.002380848
+      value: -0.005258441
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
