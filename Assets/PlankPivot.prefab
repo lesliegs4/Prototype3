@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4357460305387667821}
   - component: {fileID: 1806888226039862895}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: PlankPivot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -49,6 +49,8 @@ MonoBehaviour:
   plankVisual: {fileID: 3987470661083819419}
   growSpeed: 3
   rotateSpeed: 250
+  debugDraw: 1
+  debugPointRadius: 0.06
 --- !u!1 &6272305269982421964
 GameObject:
   m_ObjectHideFlags: 0
@@ -171,7 +173,7 @@ BoxCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0

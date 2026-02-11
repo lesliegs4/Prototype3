@@ -14,35 +14,102 @@ public class PlankController : MonoBehaviour
     private bool hitNextPlatform = false;
 
     private BoxCollider2D plankCol;
-    private Rigidbody2D plankRB;
+    // private Rigidbody2D plankRB;
 
-    void Awake()
+    private Rigidbody2D pivotRB;
+
+
+    // void Awake()
+    // {
+        // if (plankVisual != null)
+        // {
+        //     plankCol = plankVisual.GetComponent<BoxCollider2D>();
+        //     if (plankCol == null) plankCol = plankVisual.GetComponentInChildren<BoxCollider2D>();
+            
+        //     if (plankCol != null)
+        //     {
+        //         plankCol.isTrigger = false;
+        //         plankCol.usedByComposite = false;
+        //     }
+            
+        //     plankRB = plankVisual.GetComponent<Rigidbody2D>();
+        //     if (plankRB == null)
+        //     {
+        //         plankRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+        //     }
+            
+        //     plankRB.bodyType = RigidbodyType2D.Kinematic;
+        //     plankRB.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        //     plankRB.interpolation = RigidbodyInterpolation2D.Interpolate;
+        // }
+        // Collider should stay on plankVisual
+// plankCol = plankVisual.GetComponent<BoxCollider2D>();
+// if (plankCol == null) plankCol = plankVisual.GetComponentInChildren<BoxCollider2D>();
+// if (plankCol != null)
+// {
+//     plankCol.isTrigger = false;
+//     plankCol.usedByComposite = false;
+// }
+
+// // Rigidbody belongs on the pivot (this GameObject)
+// pivotRB = GetComponent<Rigidbody2D>();
+// if (pivotRB == null) pivotRB = gameObject.AddComponent<Rigidbody2D>();
+
+// pivotRB.bodyType = RigidbodyType2D.Kinematic;
+// pivotRB.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+// pivotRB.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+// // REMOVE any Rigidbody2D on plankVisual (it fights the hierarchy motion)
+// var visualRB = plankVisual.GetComponent<Rigidbody2D>();
+// if (visualRB != null)
+// {
+//     Destroy(visualRB);
+// }
+void Awake()
+{
+    if (plankVisual == null)
     {
-        if (plankVisual != null)
-        {
-            plankCol = plankVisual.GetComponent<BoxCollider2D>();
-            if (plankCol == null) plankCol = plankVisual.GetComponentInChildren<BoxCollider2D>();
-            
-            if (plankCol != null)
-            {
-                plankCol.isTrigger = false;
-                plankCol.usedByComposite = false;
-            }
-            
-            plankRB = plankVisual.GetComponent<Rigidbody2D>();
-            if (plankRB == null)
-            {
-                plankRB = plankVisual.gameObject.AddComponent<Rigidbody2D>();
-            }
-            
-            plankRB.bodyType = RigidbodyType2D.Kinematic;
-            plankRB.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            plankRB.interpolation = RigidbodyInterpolation2D.Interpolate;
-        }
+        Debug.LogError($"PlankVisual not assigned on {name}");
+        return;
+    }
+
+    // Rigidbody belongs on the pivot (this object)
+    pivotRB = GetComponent<Rigidbody2D>();
+    if (pivotRB == null) pivotRB = gameObject.AddComponent<Rigidbody2D>();
+    pivotRB.bodyType = RigidbodyType2D.Kinematic;
+    pivotRB.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+    pivotRB.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+    // Collider stays on plankVisual
+    plankCol = plankVisual.GetComponent<BoxCollider2D>() ?? plankVisual.GetComponentInChildren<BoxCollider2D>();
+    if (plankCol == null)
+    {
+        Debug.LogError($"No BoxCollider2D found under plankVisual={plankVisual.name}");
+        return;
+    }
+    plankCol.isTrigger = true;
+
+    // IMPORTANT: only remove Rigidbody2D from plankVisual if plankVisual is NOT the pivot
+    if (plankVisual != transform)
+    {
+        var visualRB = plankVisual.GetComponent<Rigidbody2D>();
+        if (visualRB != null) Destroy(visualRB);
+    }
+    else
+    {
+        Debug.LogError("plankVisual is set to the pivot object. It must be a CHILD visual object.");
+    }
+//}
+
+
+
     }
 
     void Update()
     {
+
+        if (!EnsurePlankRefs("Update")) return;
+
         if (gm == null || plankVisual == null) return;
         if (gm.state != GameManager.State.Building) return;
 
@@ -74,6 +141,9 @@ public class PlankController : MonoBehaviour
 
     IEnumerator RotateAndCheck()
     {
+
+        if (!EnsurePlankRefs("RotateAndCheck")) yield break;
+
         isRotating = true;
         landedSuccessfully = false;
         hitNextPlatform = false;
@@ -89,7 +159,10 @@ public class PlankController : MonoBehaviour
         {
             float delta = rotateSpeed * Time.deltaTime;
             currentAngle = Mathf.Max(currentAngle - delta, targetAngle);
-            transform.rotation = Quaternion.Euler(0, 0, currentAngle);
+            // pivotRB.MoveRotation(currentAngle);
+                transform.rotation = Quaternion.Euler(0, 0, currentAngle);
+
+
             
             checkCount++;
             if (checkCount % 10 == 0)
@@ -97,29 +170,32 @@ public class PlankController : MonoBehaviour
                 Debug.Log($"Checking at angle {currentAngle:F1}°");
             }
             
-            // Either our math check hits, or the next platform's trigger told the GM we made contact.
-            if (hitNextPlatform || CheckIfTouchingNextPlatformTop())
-            {
-                Debug.Log("🎯 Plank touched the top of next platform during rotation! Stopping here.");
-                landedSuccessfully = true;
-                hitNextPlatform = true;
+            // // Either our math check hits, or the next platform's trigger told the GM we made contact.
+            // if (hitNextPlatform || CheckIfTouchingNextPlatformTop())
+            // {
+            //     Debug.Log("🎯 Plank touched the top of next platform during rotation! Stopping here.");
+            //     landedSuccessfully = true;
+            //     hitNextPlatform = true;
 
-                // If the next platform is not higher than the current one (including downward/moving cases),
-                // finishing to exactly horizontal prevents a small visual/physics "gap" at the landing edge.
-                if (ShouldSnapToHorizontalOnLanding())
-                {
-                    currentAngle = targetAngle;
-                    transform.rotation = Quaternion.Euler(0, 0, currentAngle);
-                }
-                break;
-            }
+            //     // If the next platform is not higher than the current one (including downward/moving cases),
+            //     // finishing to exactly horizontal prevents a small visual/physics "gap" at the landing edge.
+            //     if (ShouldSnapToHorizontalOnLanding())
+            //     {
+            //         currentAngle = targetAngle;
+            //         pivotRB.MoveRotation(currentAngle);
+
+            //     }
+            //     break;
+            // }
             
             yield return null;
         }
 
         if (!landedSuccessfully)
         {
+            // pivotRB.MoveRotation(-90f);
             transform.rotation = Quaternion.Euler(0, 0, -90f);
+
         }
 
         if (AudioManager.instance != null)
@@ -242,28 +318,61 @@ public class PlankController : MonoBehaviour
     void MakePlankSolidForPlayer()
     {
         if (plankVisual == null) return;
+
+        plankCol.isTrigger = false;
         
         plankVisual.gameObject.layer = LayerMask.NameToLayer("Plank");
         
         Debug.Log($"🔧 Plank layer set to: {LayerMask.LayerToName(plankVisual.gameObject.layer)}");
-        Debug.Log($"🔧 Plank collider isTrigger: {plankCol?.isTrigger}, RB type: {plankRB?.bodyType}");
+       // Debug.Log($"🔧 Plank collider isTrigger: {plankCol?.isTrigger}, RB type: {plankRB?.bodyType}");
     }
+
+    public void StopRotationFromTrigger()
+{
+    if (!isRotating) return;
+
+    Debug.Log("🛑 Rotation stopped by trigger contact.");
+
+    landedSuccessfully = true;
+    hitNextPlatform = true;
+
+    StopAllCoroutines();
+
+    isRotating = false;
+
+    MakePlankSolidForPlayer();
+
+    gm.state = GameManager.State.Walking;
+    gm.player.BeginWalk();
+}
+
 
     void SetupFallPhysics()
-    {
-        Rigidbody2D pivotRB = gameObject.GetComponent<Rigidbody2D>();
-        if (pivotRB == null)
-            pivotRB = gameObject.AddComponent<Rigidbody2D>();
-        pivotRB.bodyType = RigidbodyType2D.Static;
+{
+    if (!EnsurePlankRefs("SetupFallPhysics")) return;
 
-        plankRB.bodyType = RigidbodyType2D.Dynamic;
-        plankRB.gravityScale = 3f;
+    // pivot should NOT be Static if you want hinge behavior; keep it Kinematic
+    pivotRB.bodyType = RigidbodyType2D.Kinematic;
 
-        HingeJoint2D hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
-        hinge.connectedBody = pivotRB;
-        hinge.anchor = new Vector2(0, plankCol.offset.y - (plankCol.size.y * 0.5f));
-        hinge.enableCollision = false;
-    }
+    // add RB to visual now (only on fail)
+    var rb = plankVisual.GetComponent<Rigidbody2D>();
+    if (rb == null) rb = plankVisual.gameObject.AddComponent<Rigidbody2D>();
+    rb.bodyType = RigidbodyType2D.Dynamic;
+    rb.gravityScale = 3f;
+
+    plankCol.isTrigger = false; // now it can collide while falling
+
+    var hinge = plankVisual.gameObject.AddComponent<HingeJoint2D>();
+    hinge.connectedBody = pivotRB;
+    hinge.autoConfigureConnectedAnchor = false;
+
+    // anchor at the bottom of the collider in local space
+    hinge.anchor = new Vector2(plankCol.offset.x, plankCol.offset.y - plankCol.size.y * 0.5f);
+    hinge.connectedAnchor = Vector2.zero;
+
+    hinge.enableCollision = false;
+}
+
 
     void UpdatePlankVisualPivot()
     {
@@ -293,5 +402,51 @@ public class PlankController : MonoBehaviour
         landedSuccessfully = true;
         hitNextPlatform = true;
     }
+
+[Header("Debug")]
+public bool debugDraw = true;
+public float debugPointRadius = 0.06f;
+
+void OnDrawGizmos()
+{
+    if (!debugDraw) return;
+    if (plankVisual == null) return;
+
+    // Tip point
+    Vector2 tip = Application.isPlaying ? GetPlankTipWorld() : (Vector2)plankVisual.position;
+    Gizmos.color = Color.magenta;
+    Gizmos.DrawSphere(tip, debugPointRadius);
+
+    // Draw a line showing “plank up” direction
+    Gizmos.color = Color.cyan;
+    Vector3 up = plankVisual.up;
+    Gizmos.DrawLine(plankVisual.position, plankVisual.position + up * 0.8f);
+}
+
+bool EnsurePlankRefs(string context)
+{
+    if (plankVisual == null)
+    {
+        Debug.LogError($"[{context}] plankVisual is NULL on {name}");
+        return false;
+    }
+
+    if (plankCol == null)
+        plankCol = plankVisual.GetComponent<BoxCollider2D>() ?? plankVisual.GetComponentInChildren<BoxCollider2D>();
+
+    if (plankCol == null)
+    {
+        Debug.LogError($"[{context}] plankCol is NULL. No BoxCollider2D found on plankVisual={plankVisual.name}");
+        return false;
+    }
+
+    if (pivotRB == null)
+        pivotRB = GetComponent<Rigidbody2D>() ?? gameObject.AddComponent<Rigidbody2D>();
+
+    return true;
+}
+
+
+
 
 }

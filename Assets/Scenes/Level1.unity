@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 38098004}
   - component: {fileID: 38098006}
   - component: {fileID: 38098005}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -595,7 +595,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_TagString
@@ -994,11 +994,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Size.y
-      value: 1.2810287
+      value: 1.2744553
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Offset.y
-      value: -0.002380848
+      value: -0.0056675375
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -1294,7 +1294,7 @@ GameObject:
   - component: {fileID: 524670651}
   - component: {fileID: 524670653}
   - component: {fileID: 524670652}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1585,7 +1585,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8190250013576717609, guid: 9fb0193ef1cecbf4ba4ab3af960aec30, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.9372549, g: 0.9529412, b: 0.9529412, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1621,7 +1621,7 @@ GameObject:
   - component: {fileID: 640082269}
   - component: {fileID: 640082271}
   - component: {fileID: 640082270}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1734,11 +1734,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   state: 0
-  player: {fileID: 1904573608}
+  player: {fileID: 1904573614}
   cam: {fileID: 2126489988}
-  groundSprite: {fileID: 0}
+  groundSprite: {fileID: 1904573611}
   allPlatforms:
   - {fileID: 243703077}
+  - {fileID: 1734869814}
+  - {fileID: 463481856}
+  - {fileID: 1729916863}
+  - {fileID: 1612755850}
   - {fileID: 1649396328}
   - {fileID: 1499780208}
   - {fileID: 590675815}
@@ -1755,7 +1759,7 @@ MonoBehaviour:
   uiManager: {fileID: 1855410737}
   groundSortingOrder: -100
   playerSortingOrder: 100
-  fallOutOfBoundsMargin: 2.5
+  fallOutOfBoundsMargin: 2
   enableDebugJump: 1
   debugJumpKey: 99
   debugJumpPlatformName: StarterPlatform (5)
@@ -3186,7 +3190,7 @@ GameObject:
   - component: {fileID: 1212962633}
   - component: {fileID: 1212962635}
   - component: {fileID: 1212962634}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: LandingTrigger
   m_TagString: Platform
   m_Icon: {fileID: 0}
@@ -3202,7 +3206,7 @@ Transform:
   m_GameObject: {fileID: 1212962632}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.01, y: 0.773, z: 0}
+  m_LocalPosition: {x: -0.01, y: 0.76, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3238,7 +3242,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2
@@ -3266,7 +3270,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 5.129117, y: 0.2}
+  m_Size: {x: 5.05, y: 0.3}
   m_EdgeRadius: 0
 --- !u!1 &1262545564
 GameObject:
@@ -3688,7 +3692,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_TagString
@@ -3946,7 +3950,7 @@ GameObject:
   - component: {fileID: 1390684706}
   - component: {fileID: 1390684708}
   - component: {fileID: 1390684707}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: LandingTrigger
   m_TagString: Platform
   m_Icon: {fileID: 0}
@@ -3998,7 +4002,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2
@@ -4026,7 +4030,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 5.221157, y: 0.19999999}
+  m_Size: {x: 4.92, y: 0.19999999}
   m_EdgeRadius: 0
 --- !u!1 &1392300048
 GameObject:
@@ -4183,7 +4187,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_TagString
@@ -4311,7 +4315,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_TagString
@@ -4440,7 +4444,7 @@ GameObject:
   - component: {fileID: 1465007154}
   - component: {fileID: 1465007156}
   - component: {fileID: 1465007155}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4456,7 +4460,7 @@ Transform:
   m_GameObject: {fileID: 1465007153}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.01, y: 0.775, z: 0}
+  m_LocalPosition: {x: 0.02, y: 0.622, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4510,7 +4514,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.03762698, y: -0.373735}
+  m_Offset: {x: -0.03762698, y: -0.05}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -4520,7 +4524,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 5.216044, y: 0.19999999}
+  m_Size: {x: 5.04, y: 0.19999999}
   m_EdgeRadius: 0
 --- !u!1 &1494808888
 GameObject:
@@ -4932,7 +4936,7 @@ GameObject:
   - component: {fileID: 1567257313}
   - component: {fileID: 1567257315}
   - component: {fileID: 1567257314}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: LandingTrigger
   m_TagString: Platform
   m_Icon: {fileID: 0}
@@ -4948,7 +4952,7 @@ Transform:
   m_GameObject: {fileID: 1567257312}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.01, y: 0.773, z: 0}
+  m_LocalPosition: {x: -0.2, y: 0.771, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4984,7 +4988,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2
@@ -5002,7 +5006,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.005836487, y: -0.36803156}
+  m_Offset: {x: 0.16700554, y: -0.36351186}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -5012,7 +5016,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 4, y: 0.21140683}
+  m_Size: {x: 4.9719954, y: 0.22044623}
   m_EdgeRadius: 0
 --- !u!1 &1583933411
 GameObject:
@@ -5175,7 +5179,7 @@ GameObject:
   - component: {fileID: 1638611788}
   - component: {fileID: 1638611790}
   - component: {fileID: 1638611789}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5191,7 +5195,7 @@ Transform:
   m_GameObject: {fileID: 1638611787}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.01, y: 0.775, z: 0}
+  m_LocalPosition: {x: 0.01, y: 0.78, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5268,7 +5272,7 @@ GameObject:
   - component: {fileID: 1647962837}
   - component: {fileID: 1647962839}
   - component: {fileID: 1647962838}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5284,7 +5288,7 @@ Transform:
   m_GameObject: {fileID: 1647962836}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.01, y: 0.775, z: 0}
+  m_LocalPosition: {x: 0.01, y: 0.694, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5338,7 +5342,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.005836487, y: -0.373735}
+  m_Offset: {x: 0.005836487, y: -0.25}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -5429,7 +5433,7 @@ GameObject:
   - component: {fileID: 1769697636}
   - component: {fileID: 1769697638}
   - component: {fileID: 1769697637}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5620,12 +5624,20 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
+      propertyPath: m_Size.x
+      value: 5.144582
+      objectReference: {fileID: 0}
+    - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Size.y
-      value: 1.2752736
+      value: 1.289083
+      objectReference: {fileID: 0}
+    - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
+      propertyPath: m_Offset.x
+      value: -0.0031050444
       objectReference: {fileID: 0}
     - target: {fileID: 8985465068332236462, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Offset.y
-      value: -0.005258441
+      value: 0.0016462803
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -5700,8 +5712,8 @@ GameObject:
   - component: {fileID: 1904573611}
   - component: {fileID: 1904573610}
   - component: {fileID: 1904573609}
-  - component: {fileID: 1904573608}
   - component: {fileID: 1904573613}
+  - component: {fileID: 1904573614}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -5709,33 +5721,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1904573608
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1904573607}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a3b04d142bbb144d7bbf5c074af2b48e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  gm: {fileID: 716781905}
-  walkSpeed: 3
-  runLoopClip: {fileID: 8300000, guid: 9e4d23e42db1814438fbf7bf1c3a5f75, type: 3}
-  runLoopSource: {fileID: 0}
-  runLoopVolume: 1
-  enableFreefallGameOver: 1
-  freefallGameOverDelay: 2.5
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 0
-  groundCheckDistance: 0.12
-  enableGroundHitGameOver: 1
-  groundKillMask:
-    serializedVersion: 2
-    m_Bits: 0
 --- !u!50 &1904573609
 Rigidbody2D:
   serializedVersion: 5
@@ -5895,6 +5880,41 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1904573614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904573607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cb5046619eb6483e8e4940dd3d19687, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  gm: {fileID: 716781905}
+  walkSpeed: 3
+  runLoopClip: {fileID: 8300000, guid: 9e4d23e42db1814438fbf7bf1c3a5f75, type: 3}
+  runLoopSource: {fileID: 1373915102}
+  runLoopVolume: 1
+  enableFreefallGameOver: 1
+  freefallGameOverDelay: 2.5
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 0
+  groundCheckDistance: 0.12
+  enableGroundHitGameOver: 1
+  groundKillMask:
+    serializedVersion: 2
+    m_Bits: 0
+  debugEnabled: 1
+  debugDraw: 1
+  debugJamLogs: 1
+  debugGroundLogs: 0
+  jamVelocityThreshold: 0.05
+  jamMinDuration: 0.12
+  jamLogCooldown: 0.35
+  debugCollisionLogs: 1
 --- !u!1001 &1920370385
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5905,7 +5925,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1418737570442814418, guid: 1e90b21c599804e1f93e5de6db00f35b, type: 3}
       propertyPath: m_TagString
@@ -6034,7 +6054,7 @@ GameObject:
   - component: {fileID: 1969731827}
   - component: {fileID: 1969731829}
   - component: {fileID: 1969731828}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6050,7 +6070,7 @@ Transform:
   m_GameObject: {fileID: 1969731826}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.01, y: 0.775, z: 0}
+  m_LocalPosition: {x: -0.06, y: 0.763, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6104,7 +6124,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.005836487, y: -0.36518008}
+  m_Offset: {x: -0.13703716, y: -0.36259967}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -6114,7 +6134,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 5.129117, y: 0.2171098}
+  m_Size: {x: 4.729455, y: 0.22227061}
   m_EdgeRadius: 0
 --- !u!1 &1992857400
 GameObject:
@@ -6264,7 +6284,7 @@ GameObject:
   - component: {fileID: 1996804982}
   - component: {fileID: 1996804984}
   - component: {fileID: 1996804983}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: LandingTrigger
   m_TagString: Platform
   m_Icon: {fileID: 0}
@@ -6316,7 +6336,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2
@@ -6326,7 +6346,7 @@ BoxCollider2D:
     m_Bits: 4294967295
   m_ContactCaptureLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 119
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -6436,7 +6456,7 @@ GameObject:
   - component: {fileID: 2098017249}
   - component: {fileID: 2098017251}
   - component: {fileID: 2098017250}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlankLandingTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
